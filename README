@@ -1,0 +1,4 @@
+glokka = global + akka
+
+This library provides registration of global names for cluster Akka.
+See http://erlang.org/doc/man/global.html.
