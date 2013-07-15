@@ -1,49 +1,20 @@
-package gloakka
+package glokka
 
-object RemoteActorRegistry {
+import akka.actor.{Actor, ActorLogging}
+
+object ClusterActorRegistry {
   val ACTOR_NAME = ActorRegistry.escape(getClass.getName)
 
   private case class LookupLocal(name: String)
   private val LOOKUP_TIMEOUT = 5.seconds
 }
 
-class RemoteActorRegistry extends Actor with Logger {
+class ClusterActorRegistry extends Actor with ActorLogging {
   import ActorRegistry._
-  import RemoteActorRegistry._
-
-  private var addrs:     IMap[String, String] = _
-  private var localAddr: String               = _
+  import ClusterActorRegistry._
 
   override def preStart() {
-    addrs = Config.hazelcastInstance.getMap("xitrum/RemoteActorRegistry")
-
-    val h    = Config.hazelcastInstance
-    val lock = h.getLock(ACTOR_NAME)
-    lock.lock()
-    try {
-      // Register local node
-      val cluster = h.getCluster
-      val id      = cluster.getLocalMember.getUuid
-      val nc      = Config.application.getConfig("akka.remote.netty.tcp")
-      val host    = nc.getString("hostname")
-      val port    = nc.getInt("port")
-      localAddr   = host + ":" + port
-      addrs.put(id, localAddr)
-
-      cluster.addMembershipListener(new MembershipListener {
-        // See "Register local node" above. The added member will update the
-        // distributed map addrs. No need to do anything here.
-        def memberAdded(membershipEvent: MembershipEvent) {}
-
-        // Unregister remote dead node.
-        def memberRemoved(membershipEvent: MembershipEvent) {
-          val id = membershipEvent.getMember.getUuid
-          addrs.remove(id)
-        }
-      })
-    } finally {
-      lock.unlock()
-    }
+    log.info("ActorRegistry started: " + self)
   }
 
 /*

@@ -1,4 +1,6 @@
-package gloakka
+package glokka
+
+import akka.actor.{Actor, ActorRef, Props, Identify, ActorIdentity, ActorLogging}
 
 object LocalActorRegistry {
   val ACTOR_NAME = ActorRegistry.escape(getClass.getName)
@@ -7,9 +9,13 @@ object LocalActorRegistry {
   private case class IdentifyForLookupOrCreate(sed: ActorRef, propsMaker: () => Props, escapedName: String)
 }
 
-class LocalActorRegistry extends Actor {
+class LocalActorRegistry extends Actor with ActorLogging {
   import ActorRegistry._
   import LocalActorRegistry._
+
+  override def preStart() {
+    log.info("ActorRegistry started: " + self)
+  }
 
   def receive = {
     case Lookup(name) =>

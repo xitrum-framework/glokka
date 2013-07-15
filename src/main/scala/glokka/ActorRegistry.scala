@@ -1,32 +1,30 @@
 package glokka
 
 import java.net.URLEncoder
+import akka.actor.{ActorSystem, Props}
+import com.typesafe.config.ConfigFactory
 
-import scala.collection.mutable.{Map => MMap}
-import scala.concurrent.duration._
-import scala.concurrent.Await
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.control.NonFatal
-
-import akka.actor.{Actor, ActorRef, Props, Identify, ActorIdentity}
-import akka.pattern.ask
-
-object ActorRegistry extends Logger {
+object ActorRegistry {
   case class Lookup(name: String)
   case class LookupOrCreate(name: String, propsMaker: () => Props)
 
   //----------------------------------------------------------------------------
 
+  private val system = ActorSystem("glokka")
+
   private val actorRef = {
-    if (Config.application.getString("akka.actor.provider") == "akka.remote.RemoteActorRefProvider")
-      Config.actorSystem.actorOf(Props[RemoteActorRegistry], RemoteActorRegistry.ACTOR_NAME)
+    val config = ConfigFactory.load()
+    if (config.getString("akka.actor.provider") == "akka.actor.ActorRefProvider")
+      system.actorOf(Props[LocalActorRegistry], LocalActorRegistry.ACTOR_NAME)
+    else if (config.getString("akka.actor.provider") == "akka.cluster.ClusterActorRefProvider")
+      system.actorOf(Props[ClusterActorRegistry], ClusterActorRegistry.ACTOR_NAME)
     else
-      Config.actorSystem.actorOf(Props[LocalActorRegistry], LocalActorRegistry.ACTOR_NAME)
+      throw new Exception("Clokka only supports akka.actor.ActorRefProvider or akka.cluster.ClusterActorRefProvider")
   }
 
   /** Should be called at application start. */
   def start() {
-    logger.info("ActorRegistry started: " + actorRef)
+    // The registry is started at actorRef above
   }
 
   /** The calling actor will receive Option[ActorRef] */
@@ -35,7 +33,7 @@ object ActorRegistry extends Logger {
   }
 
   /**
-   * The calling actor will receive tuple (newlyCreated, actorRef).
+   * The calling actor will receive tuple (newlyCreated: Boolean, actorRef: ActorRef).
    *
    * @param propsMaker Used to create the actor if it does not exist
    */
