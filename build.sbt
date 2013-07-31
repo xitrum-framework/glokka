@@ -2,7 +2,7 @@ organization := "tv.cntt"
 
 name := "glokka"
 
-version := "1.0-SNAPSHOT"
+version := "1.1-SNAPSHOT"
 
 scalaVersion := "2.10.2"
 
@@ -23,3 +23,9 @@ javacOptions ++= Seq(
 libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.2.0"
 
 libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.2.0"
+
+//------------------------------------------------------------------------------
+
+// Skip API doc generation to speedup "publish-local" while developing.
+// Comment out this line when publishing to Sonatype.
+publishArtifact in (Compile, packageDoc) := false

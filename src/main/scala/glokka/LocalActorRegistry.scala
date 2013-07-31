@@ -4,9 +4,6 @@ import akka.actor.{Actor, ActorRef, Props, Identify, ActorIdentity, ActorLogging
 
 object LocalActorRegistry {
   val ACTOR_NAME = ActorRegistry.escape(getClass.getName)
-
-  private case class IdentifyForLookup(sed: ActorRef)
-  private case class IdentifyForLookupOrCreate(sed: ActorRef, propsMaker: () => Props, escapedName: String)
 }
 
 class LocalActorRegistry extends Actor with ActorLogging {
