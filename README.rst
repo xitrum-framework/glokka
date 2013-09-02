@@ -21,20 +21,36 @@ In your Scala code:
 
   import glokka.ActorRegistry
 
-  // Need to start once
-  ActorRegistry.start()
+  val system   = ActorSystem("ClusterSystem")
+  val registry = ActorRegistry.start(system)
 
   // Send this from inside an actor. The sender actor will receive:
-  // ActorRegistry.RegisterResultOK("name", actorRef) or
+  // ActorRegistry.RegisterResultOk("name", actorRef) or
   // ActorRegistry.RegisterResultConflict("name", actorRef registered before with the same name).
   //
+  // "name" can be any String, you don't have to URI-escape it.
+  //
   // When the registered actor dies, it will be unregistered automatically.
-  ActorRegistry.actorRef ! ActorRegistry.Register("name", actorRef)
+  registry ! ActorRegistry.Register("name", actorRef)
 
   // Send this from inside an actor. The sender actor will receive:
-  // ActorRegistry.LookupResultOK("name", actorRef) or
+  // ActorRegistry.LookupResultOk("name", actorRef) or
   // ActorRegistry.LookupResultNone("name")
-  ActorRegistry.actorRef ! ActorRegistry.Lookup("name")
+  registry ! ActorRegistry.Lookup("name")
+
+If you want to use `future <http://doc.akka.io/docs/akka/2.2.1/scala/futures.html>`_
+instead of running inside an actor:
+
+::
+
+  import scala.concurrent.Await
+  import scala.concurrent.duration._
+  import akka.pattern.ask
+  import akka.util.Timeout
+
+  implicit val timeout = Timeout(5.seconds)
+  val future = registry ? ActorRegistry.Register("name", actorRef)
+  val result = Await.result(future, timeout.duration)
 
 Notes
 -----
@@ -42,5 +58,33 @@ Notes
 Glokka can run in Akka non-cluster mode (local or remote). While developing, you
 can run Akka in local mode, then later config Akka to run in cluster mode.
 
-In cluster mode, Glokka uses Akka's Cluster Singleton Pattern to maintain an
-actor that stores the name -> actorRef lookup table.
+In cluster mode, Glokka uses
+`Akka's Cluster Singleton Pattern <http://doc.akka.io/docs/akka/2.2.1/contrib/cluster-singleton.html>`_
+to maintain an actor that stores the name -> actorRef lookup table.
+
+Akka config file for a node should look like this (note "ClusterSystem" in the
+source code example above and the config below):
+
+::
+
+  akka {
+    actor {
+      provider = "akka.cluster.ClusterActorRefProvider"
+    }
+
+    remote {
+      log-remote-lifecycle-events = off
+      netty.tcp {
+        hostname = "127.0.0.1"
+        port = 2551
+      }
+    }
+
+    cluster {
+      seed-nodes = [
+        "akka.tcp://ClusterSystem@127.0.0.1:2551",
+        "akka.tcp://ClusterSystem@127.0.0.1:2552"]
+
+      auto-down = on
+    }
+  }
