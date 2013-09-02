@@ -49,7 +49,7 @@ class LocalActorRegistry(
           sender ! LookupResultOk(name, actorRef)
 
         case None =>
-          sender ! LookupResultNone
+          sender ! LookupResultNone(name)
       }
 
     case Terminated(actorRef) =>

@@ -38,19 +38,8 @@ In your Scala code:
   // ActorRegistry.LookupResultNone("name")
   registry ! ActorRegistry.Lookup("name")
 
-If you want to use `future <http://doc.akka.io/docs/akka/2.2.1/scala/futures.html>`_
-instead of running inside an actor:
-
-::
-
-  import scala.concurrent.Await
-  import scala.concurrent.duration._
-  import akka.pattern.ask
-  import akka.util.Timeout
-
-  implicit val timeout = Timeout(5.seconds)
-  val future = registry ? ActorRegistry.Register("name", actorRef)
-  val result = Await.result(future, timeout.duration)
+You can also use `future <http://doc.akka.io/docs/akka/2.2.1/scala/futures.html>`_
+instead of running inside an actor. See src/test for examples.
 
 Notes
 -----

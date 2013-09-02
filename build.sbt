@@ -26,6 +26,8 @@ libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.2.1"
 
 libraryDependencies += "com.typesafe.akka" %% "akka-contrib" % "2.2.1"
 
+libraryDependencies += "org.specs2" %% "specs2" % "2.1.1" % "test"
+
 //------------------------------------------------------------------------------
 
 // Skip API doc generation to speedup "publish-local" while developing.
