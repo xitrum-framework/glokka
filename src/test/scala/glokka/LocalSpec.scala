@@ -101,5 +101,29 @@ class ParserSpec extends Specification {
       val ok = result.asInstanceOf[ActorRegistry.LookupResultNone]
       ok.name mustEqual "namexxx"
     }
+
+    //--------------------------------------------------------------------------
+
+    "Unregister dead actor" in {
+      import akka.actor.ActorDSL._
+
+      val actorRef = actor(new Act {
+        become { case "die" => context.stop(self) }
+      })
+
+      registry ! ActorRegistry.Register("die", actorRef)
+      Thread.sleep(100)
+
+      val future1 = registry ? ActorRegistry.Lookup("die")
+      val result1 = Await.result(future1, timeout.duration)
+      result1 must haveClass[ActorRegistry.LookupResultOk]
+
+      actorRef ! "die"
+      Thread.sleep(100)
+
+      val future2 = registry ? ActorRegistry.Lookup("die")
+      val result2 = Await.result(future2, timeout.duration)
+      result2 must haveClass[ActorRegistry.LookupResultNone]
+    }
   }
 }
