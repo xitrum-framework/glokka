@@ -1,6 +1,7 @@
 package glokka
 
-import akka.actor.{Actor, ActorRef, Props, Identify, ActorIdentity, ActorLogging}
+import scala.collection.mutable.{ArrayBuffer, Map => MMap}
+import akka.actor.{Actor, ActorLogging, ActorRef, Terminated}
 
 object LocalActorRegistry {
   val ACTOR_NAME = ActorRegistry.escape(getClass.getName)
@@ -10,32 +11,54 @@ class LocalActorRegistry extends Actor with ActorLogging {
   import ActorRegistry._
   import LocalActorRegistry._
 
+  // This is the main lookup table
+  private val name2Ref  = MMap[String, ActorRef]()
+
+  // This is the reverse lookup table to quickly unregister dead actors
+  private val ref2Names = MMap[ActorRef, ArrayBuffer[String]]()
+
   override def preStart() {
-    log.info("ActorRegistry started: " + self)
+    log.info("ActorRegistry starts in local mode: " + self)
+    name2Ref.clear()
   }
 
   def receive = {
+    case Register(name, actorRef) =>
+      name2Ref.get(name) match {
+        case Some(oldActorRef) =>
+          if (oldActorRef == actorRef)
+            sender ! RegisterResultOK(name, oldActorRef)
+          else
+            sender ! RegisterResultConflict(name, oldActorRef)
+
+        case None =>
+          sender ! RegisterResultOK(name, actorRef)
+
+          name2Ref(name) = actorRef
+
+          context.watch(actorRef)
+          ref2Names.get(actorRef) match {
+            case None =>
+              ref2Names(actorRef) = ArrayBuffer(name)
+
+            case Some(names) =>
+              names.append(name)
+          }
+      }
+
     case Lookup(name) =>
-      val sel = context.actorSelection(escape(name))
-      val sed = sender
-      sel ! Identify(IdentifyForLookup(sed))
+      name2Ref.get(name) match {
+        case Some(actorRef) =>
+          sender ! LookupResultOK(name, actorRef)
 
-    case LookupOrCreate(name, propsMaker) =>
-      val esc = escape(name)
-      val sel = context.actorSelection(esc)
-      val sed = sender
-      sel ! Identify(IdentifyForLookupOrCreate(sed, propsMaker, esc))
+        case None =>
+          sender ! LookupResultNone
+      }
 
-    //--------------------------------------------------------------------------
-
-    case ActorIdentity(IdentifyForLookup(sed), opt) =>
-      sed ! opt
-
-    case ActorIdentity(IdentifyForLookupOrCreate(sed, _, _), Some(actorRef)) =>
-      sed ! (false, actorRef)
-
-    case ActorIdentity(IdentifyForLookupOrCreate(sed, propsMaker, escapedName), None) =>
-      val actorRef = context.actorOf(propsMaker(), escapedName)
-      sed ! (true, actorRef)
+    case Terminated(actorRef) =>
+      ref2Names.get(actorRef).foreach { names =>
+        names.foreach { name => name2Ref.remove(name) }
+      }
+      ref2Names.remove(actorRef)
   }
 }

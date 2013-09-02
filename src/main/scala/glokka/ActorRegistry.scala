@@ -1,28 +1,17 @@
 package glokka
 
 import java.net.URLEncoder
-import akka.actor.{ActorSystem, ActorRef, Props}
+import akka.actor.{ActorRef, ActorSystem, Props}
 import com.typesafe.config.ConfigFactory
 
 object ActorRegistry {
-  /**
-   * Send this from inside an actor.
-   * The sender actor will receive Option[ActorRef].
-   */
+  case class Register(name: String, actorRef: ActorRef)
+  case class RegisterResultOK(name: String, actorRef: ActorRef)
+  case class RegisterResultConflict(name: String, actorRef: ActorRef)
+
   case class Lookup(name: String)
-
-  /**
-   * Send this from inside an actor.
-   * The sender actor will receive tuple (newlyCreated: Boolean, actorRef: ActorRef).
-   * propsMaker is used to create the actor if it does not exist.
-   */
-  case class LookupOrCreate(name: String, propsMaker: () => Props)
-
-  /** Result of "Lookup", used internally by Glokka */
-  case class IdentifyForLookup(sed: ActorRef)
-
-  /** Result of "LookupOrCreate", used internally by Glokka */
-  case class IdentifyForLookupOrCreate(sed: ActorRef, propsMaker: () => Props, escapedName: String)
+  case class LookupResultOK(name: String, actorRef: ActorRef)
+  case class LookupResultNone(name: String)
 
   //----------------------------------------------------------------------------
 
@@ -40,13 +29,12 @@ object ActorRegistry {
 //      throw new Exception(
 //          "akka.actor.provider not supported: " + provider +
 //          ". Glokka only supports akka.actor.LocalActorRefProvider or akka.cluster.ClusterActorRefProvider")
-    if (provider == "akka.actor.LocalActorRefProvider")
-      system.actorOf(Props[LocalActorRegistry], LocalActorRegistry.ACTOR_NAME)
-    else
+    if (provider == "akka.cluster.ClusterActorRefProvider")
       throw new Exception(
           "akka.actor.provider not supported: " + provider +
           ". Glokka only supports akka.actor.LocalActorRefProvider")
-
+    else
+      system.actorOf(Props[LocalActorRegistry], LocalActorRegistry.ACTOR_NAME)
   }
 
   /** Should be called at application start. */
