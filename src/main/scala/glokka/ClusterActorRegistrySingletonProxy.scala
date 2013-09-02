@@ -8,8 +8,8 @@ import akka.cluster.{Cluster, ClusterEvent, Member}
 import akka.contrib.pattern.ClusterSingletonManager
 
 object ClusterActorRegistrySingletonProxy {
-  val PROXY_NAME     = "Proxy"
-  val SINGLETON_NAME = "ActorRegistry"
+  val PROXY_NAME     = "GlokkaActorRegistryProxy"
+  val SINGLETON_NAME = "GlokkaActorRegistry"
 }
 
 class ClusterActorRegistrySingletonProxy extends Actor with ActorLogging {
