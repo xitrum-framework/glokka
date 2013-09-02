@@ -2,18 +2,21 @@ package glokka
 
 import org.specs2.mutable._
 
-import akka.actor.ActorSystem
-
 import scala.concurrent.Await
 import scala.concurrent.duration._
+
+import akka.actor.ActorSystem
 import akka.pattern.ask
 import akka.util.Timeout
 
 class ParserSpec extends Specification {
-  implicit val system   = ActorSystem("ClusterSystem")
-  val registry = ActorRegistry.start(system)
+  // Use "implicit" so that we can use actor DSL
+  implicit val system = ActorSystem("ClusterSystem")
 
+  // For "ask" timeout
   implicit val timeout = Timeout(5000)
+
+  val registry = ActorRegistry.start(system)
 
   "Local mode" should {
     "RegisterResultOk" in {

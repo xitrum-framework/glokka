@@ -26,11 +26,11 @@ class ClusterActorRegistrySingletonProxy extends Actor with ActorLogging {
     val singletonPropsFactory: Option[Any] => Props = handOverData => {
       handOverData match {
         case None =>
-          Props(classOf[LocalActorRegistry], MMap[String, ActorRef](), MMap[ActorRef, ArrayBuffer[String]]())
+          Props(classOf[ActorRegistry], false, MMap[String, ActorRef](), MMap[ActorRef, ArrayBuffer[String]]())
 
         case Some(any) =>
           val (name2Ref, ref2Names) = any.asInstanceOf[(MMap[String, ActorRef], MMap[ActorRef, ArrayBuffer[String]])]
-          Props(classOf[LocalActorRegistry], name2Ref, ref2Names)
+          Props(classOf[ActorRegistry], false, name2Ref, ref2Names)
       }
     }
     val proxyProps = ClusterSingletonManager.props(
