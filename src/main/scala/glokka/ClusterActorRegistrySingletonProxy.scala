@@ -41,6 +41,10 @@ class ClusterActorRegistrySingletonProxy(proxyName: String) extends Actor with A
       singletonName      = SINGLETON_NAME,
       terminationMessage = HandOver,
       role               = None)
+
+    // Must use context.system.actorOf instead of context.actorOf, so that the
+    // created actor is attached to the system, so that we have a stable path
+    // to select later (see below)
     context.system.actorOf(proxyProps, escapedProxyName)
   }
 
