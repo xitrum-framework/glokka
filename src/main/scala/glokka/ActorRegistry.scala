@@ -15,12 +15,12 @@ object ActorRegistry {
   case class LookupResultOk(name: String, actorRef: ActorRef)
   case class LookupResultNone(name: String)
 
-  def start(system: ActorSystem): ActorRef = {
+  def start(system: ActorSystem, proxyName: String): ActorRef = {
     val config   = ConfigFactory.load()
     val provider = config.getString("akka.actor.provider")
 
     if (provider == "akka.cluster.ClusterActorRefProvider")
-      system.actorOf(Props[ClusterActorRegistrySingletonProxy])
+      system.actorOf(Props[ClusterActorRegistrySingletonProxy], proxyName)
     else
       system.actorOf(Props(classOf[ActorRegistry], true, MMap[String, ActorRef](), MMap[ActorRef, ArrayBuffer[String]]()))
   }

@@ -22,7 +22,7 @@ In your Scala code:
   import glokka.ActorRegistry
 
   val system   = ActorSystem("ClusterSystem")
-  val registry = ActorRegistry.start(system)
+  val registry = ActorRegistry.start(system = system, proxyName = "my proxy name")
 
   // Send this from inside an actor. The sender actor will receive:
   // ActorRegistry.RegisterResultOk("name", actorRef) or
@@ -37,6 +37,8 @@ In your Scala code:
   // ActorRegistry.LookupResultOk("name", actorRef) or
   // ActorRegistry.LookupResultNone("name")
   registry ! ActorRegistry.Lookup("name")
+
+You can start multiple registry actors. They must have different ``proxyName``.
 
 You can also use `future <http://doc.akka.io/docs/akka/2.2.1/scala/futures.html>`_
 instead of running inside an actor. See src/test for examples.

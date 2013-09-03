@@ -1,5 +1,7 @@
 package glokka
 
+import java.net.URLEncoder
+
 import scala.collection.immutable.SortedSet
 import scala.collection.mutable.{ArrayBuffer, Map => MMap}
 
@@ -8,20 +10,21 @@ import akka.cluster.{Cluster, ClusterEvent, Member}
 import akka.contrib.pattern.ClusterSingletonManager
 
 object ClusterActorRegistrySingletonProxy {
-  val PROXY_NAME     = "GlokkaActorRegistryProxy"
-  val SINGLETON_NAME = "GlokkaActorRegistry"
+  // This should be URL escaped
+  val SINGLETON_NAME = URLEncoder.encode("GlokkaActorRegistry", "UTF-8")
 }
 
-class ClusterActorRegistrySingletonProxy extends Actor with ActorLogging {
+class ClusterActorRegistrySingletonProxy(proxyName: String) extends Actor with ActorLogging {
   import ClusterActorRegistrySingletonProxy._
   import ActorRegistry._
+
+  private[this] val escapedProxyName = URLEncoder.encode(proxyName, "UTF-8")
 
   //----------------------------------------------------------------------------
   // Subscribe to MemberEvent, re-subscribe when restart
 
   override def preStart() {
     Cluster(context.system).subscribe(self, classOf[ClusterEvent.ClusterDomainEvent])
-    log.info("ActorRegistry starts in cluster mode")
 
     val singletonPropsFactory: Option[Any] => Props = handOverData => {
       handOverData match {
@@ -38,7 +41,7 @@ class ClusterActorRegistrySingletonProxy extends Actor with ActorLogging {
       singletonName      = SINGLETON_NAME,
       terminationMessage = HandOver,
       role               = None)
-    context.system.actorOf(proxyProps, PROXY_NAME)
+    context.system.actorOf(proxyProps, escapedProxyName)
   }
 
   override def postStop() {
@@ -68,6 +71,6 @@ class ClusterActorRegistrySingletonProxy extends Actor with ActorLogging {
 
   private def leader: Option[ActorSelection] =
     membersByAge.headOption.map { m =>
-      context.actorSelection(RootActorPath(m.address) / "user" / PROXY_NAME / SINGLETON_NAME)
+      context.actorSelection(RootActorPath(m.address) / "user" / escapedProxyName / SINGLETON_NAME)
     }
 }

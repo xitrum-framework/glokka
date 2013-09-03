@@ -16,7 +16,7 @@ class ParserSpec extends Specification {
   // For "ask" timeout
   implicit val timeout = Timeout(5000)
 
-  val registry = ActorRegistry.start(system)
+  val registry = ActorRegistry.start(system, "test")
 
   "Local mode" should {
     "RegisterResultOk" in {
