@@ -20,7 +20,7 @@ object ActorRegistry {
     val provider = config.getString("akka.actor.provider")
 
     if (provider == "akka.cluster.ClusterActorRefProvider")
-      system.actorOf(Props[ClusterActorRegistrySingletonProxy], proxyName)
+      system.actorOf(Props(classOf[ClusterActorRegistrySingletonProxy], proxyName))
     else
       system.actorOf(Props(classOf[ActorRegistry], true, MMap[String, ActorRef](), MMap[ActorRef, ArrayBuffer[String]]()))
   }
