@@ -9,14 +9,16 @@ import akka.actor.{Actor, ActorLogging, ActorRef, ActorSelection, PoisonPill, Pr
 import akka.cluster.{Cluster, ClusterEvent, Member}
 import akka.contrib.pattern.ClusterSingletonManager
 
-object ClusterActorRegistrySingletonProxy {
+object RegistryClusterSingletonProxy {
   // This should be URL escaped
   val SINGLETON_NAME = URLEncoder.encode("GlokkaActorRegistry", "UTF-8")
 }
 
-class ClusterActorRegistrySingletonProxy(proxyName: String) extends Actor with ActorLogging {
-  import ClusterActorRegistrySingletonProxy._
-  import ActorRegistry._
+object HandOver
+
+class RegistryClusterSingletonProxy(proxyName: String) extends Actor with ActorLogging {
+  import RegistryClusterSingletonProxy._
+  import Registry._
 
   private[this] val escapedProxyName = URLEncoder.encode(proxyName, "UTF-8")
 
@@ -29,11 +31,11 @@ class ClusterActorRegistrySingletonProxy(proxyName: String) extends Actor with A
     val singletonPropsFactory: Option[Any] => Props = handOverData => {
       handOverData match {
         case None =>
-          Props(classOf[ActorRegistry], false, MMap[String, ActorRef](), MMap[ActorRef, ArrayBuffer[String]]())
+          Props(classOf[Registry], false, MMap[String, ActorRef](), MMap[ActorRef, ArrayBuffer[String]]())
 
         case Some(any) =>
           val (name2Ref, ref2Names) = any.asInstanceOf[(MMap[String, ActorRef], MMap[ActorRef, ArrayBuffer[String]])]
-          Props(classOf[ActorRegistry], false, name2Ref, ref2Names)
+          Props(classOf[Registry], false, name2Ref, ref2Names)
       }
     }
     val proxyProps = ClusterSingletonManager.props(

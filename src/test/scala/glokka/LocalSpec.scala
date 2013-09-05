@@ -16,18 +16,18 @@ class ParserSpec extends Specification {
   // For "ask" timeout
   implicit val timeout = Timeout(5000)
 
-  val registry = ActorRegistry.start(system, "test")
+  val registry = Registry.start(system, "test")
 
   "Local mode" should {
     "RegisterResultOk" in {
       val actorRef = registry
 
-      val future = registry ? ActorRegistry.Register("name", actorRef)
+      val future = registry ? Registry.Register("name", actorRef)
       val result = Await.result(future, timeout.duration)
 
-      result must haveClass[ActorRegistry.RegisterResultOk]
+      result must haveClass[Registry.RegisterResultOk]
 
-      val ok = result.asInstanceOf[ActorRegistry.RegisterResultOk]
+      val ok = result.asInstanceOf[Registry.RegisterResultOk]
       ok.name     mustEqual "name"
       ok.actorRef mustEqual actorRef
     }
@@ -36,12 +36,12 @@ class ParserSpec extends Specification {
     "RegisterResultOk same name same actor" in {
       val actorRef = registry
 
-      val future = registry ? ActorRegistry.Register("name", actorRef)
+      val future = registry ? Registry.Register("name", actorRef)
       val result = Await.result(future, timeout.duration)
 
-      result must haveClass[ActorRegistry.RegisterResultOk]
+      result must haveClass[Registry.RegisterResultOk]
 
-      val ok = result.asInstanceOf[ActorRegistry.RegisterResultOk]
+      val ok = result.asInstanceOf[Registry.RegisterResultOk]
       ok.name     mustEqual "name"
       ok.actorRef mustEqual actorRef
     }
@@ -55,12 +55,12 @@ class ParserSpec extends Specification {
         become { case "hello" => sender ! "hi" }
       })
 
-      val future = registry ? ActorRegistry.Register("name", actorRef)
+      val future = registry ? Registry.Register("name", actorRef)
       val result = Await.result(future, timeout.duration)
 
-      result must haveClass[ActorRegistry.RegisterResultConflict]
+      result must haveClass[Registry.RegisterResultConflict]
 
-      val conflict = result.asInstanceOf[ActorRegistry.RegisterResultConflict]
+      val conflict = result.asInstanceOf[Registry.RegisterResultConflict]
       conflict.name     mustEqual "name"
       conflict.actorRef mustEqual registry
     }
@@ -72,12 +72,12 @@ class ParserSpec extends Specification {
         become { case "hello" => sender ! "hi" }
       })
 
-      val future = registry ? ActorRegistry.Register("name2", actorRef)
+      val future = registry ? Registry.Register("name2", actorRef)
       val result = Await.result(future, timeout.duration)
 
-      result must haveClass[ActorRegistry.RegisterResultOk]
+      result must haveClass[Registry.RegisterResultOk]
 
-      val conflict = result.asInstanceOf[ActorRegistry.RegisterResultOk]
+      val conflict = result.asInstanceOf[Registry.RegisterResultOk]
       conflict.name     mustEqual "name2"
       conflict.actorRef mustEqual actorRef
     }
@@ -85,23 +85,23 @@ class ParserSpec extends Specification {
     //--------------------------------------------------------------------------
 
     "LookupResultOk" in {
-      val future = registry ? ActorRegistry.Lookup("name")
+      val future = registry ? Registry.Lookup("name")
       val result = Await.result(future, timeout.duration)
 
-      result must haveClass[ActorRegistry.LookupResultOk]
+      result must haveClass[Registry.LookupResultOk]
 
-      val ok = result.asInstanceOf[ActorRegistry.LookupResultOk]
+      val ok = result.asInstanceOf[Registry.LookupResultOk]
       ok.name     mustEqual "name"
       ok.actorRef mustEqual registry
     }
 
     "LookupResultNone" in {
-      val future = registry ? ActorRegistry.Lookup("namexxx")
+      val future = registry ? Registry.Lookup("namexxx")
       val result = Await.result(future, timeout.duration)
 
-      result must haveClass[ActorRegistry.LookupResultNone]
+      result must haveClass[Registry.LookupResultNone]
 
-      val ok = result.asInstanceOf[ActorRegistry.LookupResultNone]
+      val ok = result.asInstanceOf[Registry.LookupResultNone]
       ok.name mustEqual "namexxx"
     }
 
@@ -114,19 +114,19 @@ class ParserSpec extends Specification {
         become { case "die" => context.stop(self) }
       })
 
-      registry ! ActorRegistry.Register("die", actorRef)
+      registry ! Registry.Register("die", actorRef)
       Thread.sleep(100)
 
-      val future1 = registry ? ActorRegistry.Lookup("die")
+      val future1 = registry ? Registry.Lookup("die")
       val result1 = Await.result(future1, timeout.duration)
-      result1 must haveClass[ActorRegistry.LookupResultOk]
+      result1 must haveClass[Registry.LookupResultOk]
 
       actorRef ! "die"
       Thread.sleep(100)
 
-      val future2 = registry ? ActorRegistry.Lookup("die")
+      val future2 = registry ? Registry.Lookup("die")
       val result2 = Await.result(future2, timeout.duration)
-      result2 must haveClass[ActorRegistry.LookupResultNone]
+      result2 must haveClass[Registry.LookupResultNone]
     }
   }
 }

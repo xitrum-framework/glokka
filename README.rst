@@ -1,50 +1,119 @@
 Glokka = Global + Akka
 
-Glokka is a Scala library that provides registration of global names for Akka
-cluster. See:
+Glokka is a Scala library that provides registration of global "name to actor
+mapping" for Akka cluster. See:
 
 * http://erlang.org/doc/man/global.html
 * http://doc.akka.io/docs/akka/2.2.1/scala/cluster-usage.html
 
-Usage
------
+Start registry
+--------------
 
 In your SBT project's build.sbt:
 
 ::
 
-  libraryDependencies += "tv.cntt" %% "glokka" % "1.1"
+  libraryDependencies += "tv.cntt" %% "glokka" % "1.2"
 
 In your Scala code:
 
 ::
 
-  import glokka.ActorRegistry
+  import glokka.Registry
 
   val system   = ActorSystem("ClusterSystem")
-  val registry = ActorRegistry.start(system = system, proxyName = "my proxy name")
-
-  // Send this from inside an actor. The sender actor will receive:
-  // ActorRegistry.RegisterResultOk("name", actorRef) or
-  // ActorRegistry.RegisterResultConflict("name", actorRef registered before with the same name).
-  //
-  // "name" can be any String, you don't have to URI-escape it.
-  //
-  // When the registered actor dies, it will be unregistered automatically.
-  registry ! ActorRegistry.Register("name", actorRef)
-
-  // Send this from inside an actor. The sender actor will receive:
-  // ActorRegistry.LookupResultOk("name", actorRef) or
-  // ActorRegistry.LookupResultNone("name")
-  registry ! ActorRegistry.Lookup("name")
+  val registry = Registry.start(system = system, proxyName = "my proxy name")
 
 You can start multiple registry actors. They must have different ``proxyName``.
 
-You can also use `future <http://doc.akka.io/docs/akka/2.2.1/scala/futures.html>`_
-instead of running inside an actor. See src/test for examples.
+Register
+--------
 
-Notes
------
+Send this from inside an actor (of course you can use
+`future <http://doc.akka.io/docs/akka/2.2.1/scala/futures.html>`_,
+see src/test for examples):
+
+::
+
+  // "name" can be any String, you don't have to URI-escape it.
+  registry ! Registry.Register("name", actorRef to register)
+
+The sender will receive:
+
+::
+
+  Registry.RegisterResultOk("name", actorRef)
+
+Or:
+
+::
+
+  Registry.RegisterResultConflict("name", actorRef registered before with the same name)
+
+When the registered actor dies, it will be unregistered automatically.
+
+Lookup
+------
+
+Send this from inside an actor:
+
+::
+
+  registry ! Registry.Lookup("name")
+
+The sender will receive:
+
+::
+
+  Registry.LookupResultOk("name", actorRef)
+
+Or:
+
+::
+
+  Registry.LookupResultNone("name")
+
+Lookup or create
+----------------
+
+You may need to lookup a named actor, and then if it does not exist, create and
+register it:
+
+::
+
+  registry ! Registry.LookupOrCreate("name")
+
+The sender will receive:
+
+::
+
+  Registry.LookupResultOk("name", actorRef)
+
+Or:
+
+::
+
+  Registry.LookupResultNone("name")
+
+In the latter case, the registry will wait with 5s timeout for the sender to
+send back either:
+
+::
+
+  registry ! Registry.CancelCreate("name")
+
+Or:
+
+::
+
+  // The sender has 5s to create and register actor
+  registry ! Registry.Register("name", actorRef to register)
+
+The registry will reply with either ``Registry.RegisterResultOk`` or
+``Registry.RegisterResultConflict`` (see the section Register above).
+
+Cluster
+-------
 
 Glokka can run in Akka non-cluster mode (local or remote). While developing, you
 can run Akka in local mode, then later config Akka to run in cluster mode.
