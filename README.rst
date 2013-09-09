@@ -6,6 +6,9 @@ mapping" for Akka cluster. See:
 * http://erlang.org/doc/man/global.html
 * http://doc.akka.io/docs/akka/2.2.1/scala/cluster-usage.html
 
+Glokka is used `Xitrum <http://ngocdaothanh.github.io/xitrum/>`_ to implement
+its distributed `SockJS <https://github.com/sockjs/sockjs-client>`_ feature.
+
 Start registry
 --------------
 
@@ -76,12 +79,13 @@ Or:
 Lookup or create
 ----------------
 
-You may need to lookup a named actor, and then if it does not exist, create and
+If you want to lookup a named actor, and when it does not exist, create and
 register it:
 
 ::
 
-  registry ! Registry.LookupOrCreate("name")
+  // 5s timeout, see below
+  registry ! Registry.LookupOrCreate("name", 5)
 
 The sender will receive:
 
@@ -106,11 +110,10 @@ Or:
 
 ::
 
-  // The sender has 5s to create and register actor
   registry ! Registry.Register("name", actorRef to register)
 
 The registry will reply with either ``Registry.RegisterResultOk`` or
-``Registry.RegisterResultConflict`` (see the section Register above).
+``Registry.RegisterResultConflict`` (see the Register section above).
 
 Cluster
 -------

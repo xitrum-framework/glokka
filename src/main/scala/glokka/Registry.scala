@@ -13,7 +13,7 @@ object Registry {
   case class LookupResultOk(name: String, actorRef: ActorRef)
   case class LookupResultNone(name: String)
 
-  case class LookupOrCreate(name: String)
+  case class LookupOrCreate(name: String, timeout: Int)
   case class CancelCreate(name: String)
 
   def start(system: ActorSystem, proxyName: String): ActorRef = {
@@ -27,11 +27,16 @@ object Registry {
   }
 }
 
-sealed trait PendingMsg
-case class PendingRegister(sender: ActorRef, name: String, actorRef: ActorRef) extends PendingMsg
-case class PendingLookup(sender: ActorRef, name: String) extends PendingMsg
-case class PendingLookupOrCreate(sender: ActorRef, name: String) extends PendingMsg
-case class PendingCreateReqData(creator: ActorRef, msgs: ArrayBuffer[PendingMsg])
+//------------------------------------------------------------------------------
+
+private sealed trait PendingMsg
+private case class PendingRegister(sender: ActorRef, actorRef: ActorRef) extends PendingMsg
+private case class PendingLookup(sender: ActorRef) extends PendingMsg
+private case class PendingLookupOrCreate(sender: ActorRef) extends PendingMsg
+
+private case class PendingCreateReqData(creator: ActorRef, msgs: ArrayBuffer[PendingMsg])
+
+//------------------------------------------------------------------------------
 
 // May need to make these immutable so that they can be serializable:
 // name2Ref:  the main lookup table
@@ -43,6 +48,7 @@ class Registry(
 ) extends Actor with ActorLogging {
   import Registry._
 
+  //                                   name    data
   private val pendingCreateReqs = MMap[String, PendingCreateReqData]()
 
   // Reset state on restart
@@ -90,7 +96,7 @@ class Registry(
           sender ! LookupResultNone(name)
       }
 
-    case LookupOrCreate(name) =>
+    case LookupOrCreate(name, timeout) =>
       pendingCreateReqs.get(name) match {
         case None =>
           name2Ref.get(name) match {
@@ -99,19 +105,20 @@ class Registry(
 
             case None =>
               sender ! LookupResultNone(name)
-
-              // TODO
               pendingCreateReqs(name) = PendingCreateReqData(sender, ArrayBuffer())
           }
 
         case Some(PendingCreateReqData(_, msgs)) =>
           // There's pending create request for this name, process later
-          msgs.append(PendingLookupOrCreate(sender, name))
+          msgs.append(PendingLookupOrCreate(sender))
       }
 
     case CancelCreate(name) =>
-      pendingCreateReqs.get(name).foreach { case PendingCreateReqData(creator, _) =>
-        if (creator == sender) pendingCreateReqs.remove(name)
+      pendingCreateReqs.get(name).foreach { case PendingCreateReqData(creator, msgs) =>
+        if (creator == sender) {
+          pendingCreateReqs.remove(name)
+          processPendingMsgsOnCancel(name, msgs)
+        }
       }
 
     case Terminated(actorRef) =>
@@ -120,11 +127,31 @@ class Registry(
       }
       ref2Names.remove(actorRef)
 
-    // Only for cluster mode
+    // Only used in cluster mode
     case HandOver =>
       // Reply to ClusterSingletonManager with hand over data,
       // which will be passed as parameter to new consumer singleton
       context.parent ! (name2Ref, ref2Names)
       context.stop(self)
+  }
+
+  private def processPendingMsgsOnCancel(name: String, msgs: ArrayBuffer[PendingMsg]) {
+    if (msgs.isEmpty) return
+
+    val head = msgs.head
+    val tail = msgs.tail
+
+    head match {
+      case PendingRegister(sender, actorRef) =>
+        if (tail.nonEmpty) pendingCreateReqs(name) = PendingCreateReqData(sender, tail)
+        self ! Register(name, actorRef)
+
+      case PendingLookup(sender) =>
+        sender ! LookupResultNone(name)
+        processPendingMsgsOnCancel(name, tail)
+
+      case PendingLookupOrCreate(sender) =>
+
+    }
   }
 }
