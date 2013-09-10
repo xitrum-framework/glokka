@@ -1,0 +1,5 @@
+1.2: Add support for "lookup or create actor" pattern
+
+1.1: Better API, more similar to that of Erlang's global module
+
+1.0: Initial release
