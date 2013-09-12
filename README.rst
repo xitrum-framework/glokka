@@ -83,8 +83,13 @@ register it:
 
 ::
 
-  // Set the number of seconds (default: 5s) for timeout (see below)
-  registry ! Registry.LookupOrCreate("name", timeout = 5)
+  registry ! Registry.LookupOrCreate("name", timeoutInSeconds = 1)
+
+``timeoutInSeconds`` defaults to 5:
+
+::
+
+  registry ! Registry.LookupOrCreate("name")
 
 You will receive:
 

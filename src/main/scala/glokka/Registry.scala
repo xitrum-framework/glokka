@@ -1,7 +1,9 @@
 package glokka
 
 import scala.collection.mutable.{ArrayBuffer, Map => MMap}
-import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props, Terminated}
+import scala.concurrent.duration.{FiniteDuration, SECONDS}
+
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Cancellable, Props, Terminated}
 import com.typesafe.config.ConfigFactory
 
 object Registry {
@@ -13,7 +15,7 @@ object Registry {
   case class LookupResultOk(name: String, actorRef: ActorRef)
   case class LookupResultNone(name: String)
 
-  case class LookupOrCreate(name: String, timeout: Int)
+  case class LookupOrCreate(name: String, timeoutInSeconds: Int = 5)
   case class CancelCreate(name: String)
 
   def start(system: ActorSystem, proxyName: String): ActorRef = {
@@ -38,7 +40,9 @@ object Registry {
 private case class PendingMsg(sender: ActorRef, msg: Any)
 
 // Key-value, key is actor name
-private case class PendingCreateValue(creator: ActorRef, msgs: ArrayBuffer[PendingMsg])
+private case class PendingCreateValue(creator: ActorRef, msgs: ArrayBuffer[PendingMsg], cancellable: Cancellable)
+
+private case class TimeoutCreate(name: String, creator: ActorRef)
 
 /**
  * @param name2Ref  The main lookup table
@@ -68,29 +72,29 @@ private class Registry(
 
   def receive = {
     case msg @ LookupOrCreate(name, timeout) =>
-      // TODO: Handle timeout
       pendingCreateReqs.get(name) match {
-        case None                              => doLookupOrCreate(name, timeout)
-        case Some(PendingCreateValue(_, msgs)) => msgs.append(PendingMsg(sender, msg))
+        case None                                 => doLookupOrCreate(name, timeout)
+        case Some(PendingCreateValue(_, msgs, _)) => msgs.append(PendingMsg(sender, msg))
       }
 
     case CancelCreate(name) =>
       // Only the one who sent LookupOrCreate can now cancel
-      pendingCreateReqs.get(name).foreach { case PendingCreateValue(creator, msgs) =>
-        if (sender == creator) {
-          pendingCreateReqs.remove(name)
-          msgs.foreach { msg => self.tell(msg.msg, msg.sender) }
-        }
-      }
+      doCancel(name, sender, false)
+
+    case TimeoutCreate(name, maybeTheCreator) =>
+      doCancel(name, maybeTheCreator, true)
 
     case msg @ Register(name, actorRef) =>
       pendingCreateReqs.get(name) match {
         case None =>
           doRegister(name, actorRef)
 
-        case Some(PendingCreateValue(creator, msgs)) =>
+        case Some(PendingCreateValue(creator, msgs, cancellable)) =>
           if (sender == creator) {
+            cancellable.cancel()  // Do this as soon as possible
+
             doRegister(name, actorRef)
+
             pendingCreateReqs.remove(name)
             msgs.foreach { msg => self.tell(msg.msg, msg.sender) }
           } else {
@@ -100,13 +104,12 @@ private class Registry(
 
     case msg @ Lookup(name) =>
       pendingCreateReqs.get(name) match {
-        case None                              => doLookup(name)
-        case Some(PendingCreateValue(_, msgs)) => msgs.append(PendingMsg(sender, msg))
+        case None                                 => doLookup(name)
+        case Some(PendingCreateValue(_, msgs, _)) => msgs.append(PendingMsg(sender, msg))
       }
 
     case Terminated(actorRef) =>
-      val nameso = ref2Names.remove(actorRef)
-      nameso.foreach { names =>
+      ref2Names.remove(actorRef).foreach { names =>
         names.foreach { name => name2Ref.remove(name) }
       }
 
@@ -120,14 +123,30 @@ private class Registry(
 
   //----------------------------------------------------------------------------
 
-  private def doLookupOrCreate(name: String, timeout: Int) {
+  private def doLookupOrCreate(name: String, timeoutInSeconds: Int) {
     name2Ref.get(name) match {
       case Some(actorRef) =>
         sender ! LookupResultOk(name, actorRef)
 
       case None =>
+        val delay = FiniteDuration(timeoutInSeconds, SECONDS)
+        val msg   = TimeoutCreate(name, sender)
+        import context.dispatcher
+        val cancellable = context.system.scheduler.scheduleOnce(delay, self, msg)
+
         sender ! LookupResultNone(name)
-        pendingCreateReqs(name) = PendingCreateValue(sender, ArrayBuffer())
+        pendingCreateReqs(name) = PendingCreateValue(sender, ArrayBuffer(), cancellable)
+    }
+  }
+
+  private def doCancel(name: String, maybeTheCreator: ActorRef, becauseOfTimeout: Boolean) {
+    pendingCreateReqs.get(name).foreach { case PendingCreateValue(creator, msgs, cancellable) =>
+      if (maybeTheCreator == creator) {
+        if (!becauseOfTimeout) cancellable.cancel()  // Do this as soon as possible
+
+        pendingCreateReqs.remove(name)
+        msgs.foreach { msg => self.tell(msg.msg, msg.sender) }
+      }
     }
   }
 
