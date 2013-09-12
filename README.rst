@@ -28,20 +28,19 @@ In your Scala code:
   val registry = Registry.start(system = system, proxyName = "my proxy name")
 
 You can start multiple registry actors. They must have different ``proxyName``.
+``proxyName`` can be any String, you don't have to URI-escape it.
 
 Register
 --------
 
-Send this from inside an actor (of course you can use
-`future <http://doc.akka.io/docs/akka/2.2.1/scala/futures.html>`_,
-see src/test for examples):
+Send:
 
 ::
 
   // "name" can be any String, you don't have to URI-escape it.
   registry ! Registry.Register("name", actorRef to register)
 
-The sender will receive:
+You will receive:
 
 ::
 
@@ -51,20 +50,20 @@ Or:
 
 ::
 
-  Registry.RegisterResultConflict("name", actorRef registered before with the same name)
+  Registry.RegisterResultConflict("name", actorRef registered before at the name)
 
 When the registered actor dies, it will be unregistered automatically.
 
 Lookup
 ------
 
-Send this from inside an actor:
+Send:
 
 ::
 
   registry ! Registry.Lookup("name")
 
-The sender will receive:
+You will receive:
 
 ::
 
@@ -84,10 +83,10 @@ register it:
 
 ::
 
-  // 5s timeout, see below
-  registry ! Registry.LookupOrCreate("name", 5)
+  // Set the number of seconds (default: 5s) for timeout (see below)
+  registry ! Registry.LookupOrCreate("name", timeout = 5)
 
-The sender will receive:
+You will receive:
 
 ::
 
@@ -99,21 +98,24 @@ Or:
 
   Registry.LookupResultNone("name")
 
-In the latter case, the registry will wait with 5s timeout for the sender to
-send back either:
-
-::
-
-  registry ! Registry.CancelCreate("name")
-
-Or:
+In the latter case, you have 5s (see above) to create actor and register:
 
 ::
 
   registry ! Registry.Register("name", actorRef to register)
 
-The registry will reply with either ``Registry.RegisterResultOk`` or
+You will receive either ``Registry.RegisterResultOk`` or
 ``Registry.RegisterResultConflict`` (see the Register section above).
+
+To cancel:
+
+::
+
+  registry ! Registry.CancelCreate("name")
+
+During the wait time, if there are lookup or register messages sent to the registry
+(e.g. from other places), they will be temporarily pended. They will be processed
+after you send ``Register`` or ``CancelCreate`` or timeout occurs.
 
 Cluster
 -------

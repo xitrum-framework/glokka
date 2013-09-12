@@ -21,7 +21,7 @@ object Registry {
     val provider = config.getString("akka.actor.provider")
 
     if (provider == "akka.cluster.ClusterActorRefProvider")
-      system.actorOf(Props(classOf[RegistryClusterSingletonProxy], proxyName))
+      system.actorOf(Props(classOf[ClusterSingletonProxy], proxyName))
     else
       system.actorOf(Props(classOf[Registry], true, MMap[String, ActorRef](), MMap[ActorRef, ArrayBuffer[String]]()))
   }
@@ -29,27 +29,30 @@ object Registry {
 
 //------------------------------------------------------------------------------
 
-private sealed trait PendingMsg
-private case class PendingRegister(sender: ActorRef, actorRef: ActorRef) extends PendingMsg
-private case class PendingLookup(sender: ActorRef) extends PendingMsg
-private case class PendingLookupOrCreate(sender: ActorRef) extends PendingMsg
+// Avoid using stash feature in Akka because it requires the user of Glokka to
+// config non-default mailbox. It's a little tedious.
+//
+// May have to make things in Registry immutable so that they can be serializable
+// for cluster mode, when handover from a node to another occurs.
 
-private case class PendingCreateReqData(creator: ActorRef, msgs: ArrayBuffer[PendingMsg])
+private case class PendingMsg(sender: ActorRef, msg: Any)
 
-//------------------------------------------------------------------------------
+// Key-value, key is actor name
+private case class PendingCreateValue(creator: ActorRef, msgs: ArrayBuffer[PendingMsg])
 
-// May need to make these immutable so that they can be serializable:
-// name2Ref:  the main lookup table
-// ref2Names: the reverse lookup table to quickly unregister dead actors
-class Registry(
+/**
+ * @param name2Ref  The main lookup table
+ * @param ref2Names The reverse lookup table to quickly unregister dead actors
+ */
+private class Registry(
     localMode: Boolean,
     name2Ref:  MMap[String, ActorRef],
     ref2Names: MMap[ActorRef, ArrayBuffer[String]]
 ) extends Actor with ActorLogging {
   import Registry._
 
-  //                                   name    data
-  private val pendingCreateReqs = MMap[String, PendingCreateReqData]()
+  // Key-value, key is actor name
+  private val pendingCreateReqs = MMap[String, PendingCreateValue]()
 
   // Reset state on restart
   override def preStart() {
@@ -64,70 +67,50 @@ class Registry(
   }
 
   def receive = {
-    case Register(name, actorRef) =>
-      name2Ref.get(name) match {
-        case Some(oldActorRef) =>
-          if (oldActorRef == actorRef)
-            sender ! RegisterResultOk(name, oldActorRef)
-          else
-            sender ! RegisterResultConflict(name, oldActorRef)
-
-        case None =>
-          sender ! RegisterResultOk(name, actorRef)
-
-          name2Ref(name) = actorRef
-
-          context.watch(actorRef)
-          ref2Names.get(actorRef) match {
-            case None =>
-              ref2Names(actorRef) = ArrayBuffer(name)
-
-            case Some(names) =>
-              names.append(name)
-          }
-      }
-
-    case Lookup(name) =>
-      name2Ref.get(name) match {
-        case Some(actorRef) =>
-          sender ! LookupResultOk(name, actorRef)
-
-        case None =>
-          sender ! LookupResultNone(name)
-      }
-
-    case LookupOrCreate(name, timeout) =>
+    case msg @ LookupOrCreate(name, timeout) =>
+      // TODO: Handle timeout
       pendingCreateReqs.get(name) match {
-        case None =>
-          name2Ref.get(name) match {
-            case Some(actorRef) =>
-              sender ! LookupResultOk(name, actorRef)
-
-            case None =>
-              sender ! LookupResultNone(name)
-              pendingCreateReqs(name) = PendingCreateReqData(sender, ArrayBuffer())
-          }
-
-        case Some(PendingCreateReqData(_, msgs)) =>
-          // There's pending create request for this name, process later
-          msgs.append(PendingLookupOrCreate(sender))
+        case None                              => doLookupOrCreate(name, timeout)
+        case Some(PendingCreateValue(_, msgs)) => msgs.append(PendingMsg(sender, msg))
       }
 
     case CancelCreate(name) =>
-      pendingCreateReqs.get(name).foreach { case PendingCreateReqData(creator, msgs) =>
-        if (creator == sender) {
+      // Only the one who sent LookupOrCreate can now cancel
+      pendingCreateReqs.get(name).foreach { case PendingCreateValue(creator, msgs) =>
+        if (sender == creator) {
           pendingCreateReqs.remove(name)
-          processPendingMsgsOnCancel(name, msgs)
+          msgs.foreach { msg => self.tell(msg.msg, msg.sender) }
         }
       }
 
+    case msg @ Register(name, actorRef) =>
+      pendingCreateReqs.get(name) match {
+        case None =>
+          doRegister(name, actorRef)
+
+        case Some(PendingCreateValue(creator, msgs)) =>
+          if (sender == creator) {
+            doRegister(name, actorRef)
+            pendingCreateReqs.remove(name)
+            msgs.foreach { msg => self.tell(msg.msg, msg.sender) }
+          } else {
+            msgs.append(PendingMsg(sender, msg))
+          }
+      }
+
+    case msg @ Lookup(name) =>
+      pendingCreateReqs.get(name) match {
+        case None                              => doLookup(name)
+        case Some(PendingCreateValue(_, msgs)) => msgs.append(PendingMsg(sender, msg))
+      }
+
     case Terminated(actorRef) =>
-      ref2Names.get(actorRef).foreach { names =>
+      val nameso = ref2Names.remove(actorRef)
+      nameso.foreach { names =>
         names.foreach { name => name2Ref.remove(name) }
       }
-      ref2Names.remove(actorRef)
 
-    // Only used in cluster mode
+    // Only used in cluster mode, see ClusterSingletonProxy
     case HandOver =>
       // Reply to ClusterSingletonManager with hand over data,
       // which will be passed as parameter to new consumer singleton
@@ -135,23 +118,50 @@ class Registry(
       context.stop(self)
   }
 
-  private def processPendingMsgsOnCancel(name: String, msgs: ArrayBuffer[PendingMsg]) {
-    if (msgs.isEmpty) return
+  //----------------------------------------------------------------------------
 
-    val head = msgs.head
-    val tail = msgs.tail
+  private def doLookupOrCreate(name: String, timeout: Int) {
+    name2Ref.get(name) match {
+      case Some(actorRef) =>
+        sender ! LookupResultOk(name, actorRef)
 
-    head match {
-      case PendingRegister(sender, actorRef) =>
-        if (tail.nonEmpty) pendingCreateReqs(name) = PendingCreateReqData(sender, tail)
-        self ! Register(name, actorRef)
-
-      case PendingLookup(sender) =>
+      case None =>
         sender ! LookupResultNone(name)
-        processPendingMsgsOnCancel(name, tail)
+        pendingCreateReqs(name) = PendingCreateValue(sender, ArrayBuffer())
+    }
+  }
 
-      case PendingLookupOrCreate(sender) =>
+  private def doRegister(name: String, actorRef: ActorRef) {
+    name2Ref.get(name) match {
+      case Some(oldActorRef) =>
+        if (oldActorRef == actorRef)
+          sender ! RegisterResultOk(name, oldActorRef)
+        else
+          sender ! RegisterResultConflict(name, oldActorRef)
 
+      case None =>
+        sender ! RegisterResultOk(name, actorRef)
+
+        name2Ref(name) = actorRef
+
+        context.watch(actorRef)
+        ref2Names.get(actorRef) match {
+          case None =>
+            ref2Names(actorRef) = ArrayBuffer(name)
+
+          case Some(names) =>
+            names.append(name)
+        }
+    }
+  }
+
+  private def doLookup(name: String) {
+    name2Ref.get(name) match {
+      case Some(actorRef) =>
+        sender ! LookupResultOk(name, actorRef)
+
+      case None =>
+        sender ! LookupResultNone(name)
     }
   }
 }
