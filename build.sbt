@@ -4,7 +4,7 @@ name := "glokka"
 
 version := "1.3-SNAPSHOT"
 
-scalaVersion := "2.10.2"
+scalaVersion := "2.10.3"
 
 scalacOptions ++= Seq(
   "-deprecation",
