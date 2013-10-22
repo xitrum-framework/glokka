@@ -6,11 +6,7 @@ version := "1.3-SNAPSHOT"
 
 scalaVersion := "2.10.3"
 
-scalacOptions ++= Seq(
-  "-deprecation",
-  "-feature",
-  "-unchecked"
-)
+scalacOptions ++= Seq("-deprecation", "-feature", "-unchecked")
 
 // http://www.scala-sbt.org/release/docs/Detailed-Topics/Java-Sources
 // Avoid problem when this lib is built with Java 7 but the projects that use it
