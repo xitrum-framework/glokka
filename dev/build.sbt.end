@@ -1,3 +1,4 @@
+
 // Add diagrams to Scaladoc, graphviz is required
 scalacOptions in (Compile, doc) += "-diagrams"
 
