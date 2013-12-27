@@ -7,12 +7,14 @@ import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Cancellable, Prop
 import com.typesafe.config.ConfigFactory
 
 object Registry {
-  case class Register(name: String, actorRef: ActorRef)
-  case class RegisterResultOk(name: String, actorRef: ActorRef)
-  case class RegisterResultConflict(name: String, actorRef: ActorRef)
+  case class RegisterByRef(name: String, ref: ActorRef)
+  case class RegisterByProps(name: String, props: Props)
+  case class RegisterBySystemAndProps(name: String, system: ActorSystem, props: Props)
+  case class RegisterResultOk(name: String, ref: ActorRef)
+  case class RegisterResultConflict(name: String, ref: ActorRef)
 
   case class Lookup(name: String)
-  case class LookupResultOk(name: String, actorRef: ActorRef)
+  case class LookupResultOk(name: String, ref: ActorRef)
   case class LookupResultNone(name: String)
 
   case class LookupOrCreate(name: String, timeoutInSeconds: Int = 5)
@@ -61,9 +63,9 @@ private class Registry(
   // Reset state on restart
   override def preStart() {
     if (localMode)
-      log.info("ActorRegistry starts in local mode")
+      log.info(s"Glokka actor registry starts in local mode")
     else
-      log.info("ActorRegistry starts in cluster mode")
+      log.info(s"Glokka actor registry starts in cluster mode")
 
     name2Ref.clear()
     ref2Names.clear()
@@ -84,16 +86,16 @@ private class Registry(
     case TimeoutCreate(name, maybeTheCreator) =>
       doCancel(name, maybeTheCreator, true)
 
-    case msg @ Register(name, actorRef) =>
+    case msg @ RegisterByRef(name, ref) =>
       pendingCreateReqs.get(name) match {
         case None =>
-          doRegister(name, actorRef)
+          doRegister(name, ref)
 
         case Some(PendingCreateValue(creator, msgs, cancellable)) =>
           if (sender == creator) {
             cancellable.cancel()  // Do this as soon as possible
 
-            doRegister(name, actorRef)
+            doRegister(name, ref)
 
             pendingCreateReqs.remove(name)
             msgs.foreach { msg => self.tell(msg.msg, msg.sender) }
@@ -102,14 +104,20 @@ private class Registry(
           }
       }
 
+    case RegisterByProps(name, props) =>
+      caseRegisterByProps(RegisterBySystemAndProps(name, context.system, props))
+
+    case msg: RegisterBySystemAndProps =>
+      caseRegisterByProps(msg)
+
     case msg @ Lookup(name) =>
       pendingCreateReqs.get(name) match {
         case None                                 => doLookup(name)
         case Some(PendingCreateValue(_, msgs, _)) => msgs.append(PendingMsg(sender, msg))
       }
 
-    case Terminated(actorRef) =>
-      ref2Names.remove(actorRef).foreach { names =>
+    case Terminated(ref) =>
+      ref2Names.remove(ref).foreach { names =>
         names.foreach { name => name2Ref.remove(name) }
       }
 
@@ -123,10 +131,29 @@ private class Registry(
 
   //----------------------------------------------------------------------------
 
+  private def caseRegisterByProps(msg: RegisterBySystemAndProps) {
+    pendingCreateReqs.get(msg.name) match {
+      case None =>
+        doRegister(msg.name, msg.system, msg.props)
+
+      case Some(PendingCreateValue(creator, msgs, cancellable)) =>
+        if (sender == creator) {
+          cancellable.cancel()  // Do this as soon as possible
+
+          doRegister(msg.name, msg.system, msg.props)
+
+          pendingCreateReqs.remove(msg.name)
+          msgs.foreach { msg => self.tell(msg.msg, msg.sender) }
+        } else {
+          msgs.append(PendingMsg(sender, msg))
+        }
+    }
+  }
+
   private def doLookupOrCreate(name: String, timeoutInSeconds: Int) {
     name2Ref.get(name) match {
-      case Some(actorRef) =>
-        sender ! LookupResultOk(name, actorRef)
+      case Some(ref) =>
+        sender ! LookupResultOk(name, ref)
 
       case None =>
         val delay = FiniteDuration(timeoutInSeconds, SECONDS)
@@ -150,23 +177,45 @@ private class Registry(
     }
   }
 
-  private def doRegister(name: String, actorRef: ActorRef) {
+  private def doRegister(name: String, ref: ActorRef) {
     name2Ref.get(name) match {
-      case Some(oldActorRef) =>
-        if (oldActorRef == actorRef)
-          sender ! RegisterResultOk(name, oldActorRef)
+      case Some(oldRef) =>
+        if (oldRef == ref)
+          sender ! RegisterResultOk(name, oldRef)
         else
-          sender ! RegisterResultConflict(name, oldActorRef)
+          sender ! RegisterResultConflict(name, oldRef)
 
       case None =>
-        sender ! RegisterResultOk(name, actorRef)
+        sender ! RegisterResultOk(name, ref)
 
-        name2Ref(name) = actorRef
+        name2Ref(name) = ref
 
-        context.watch(actorRef)
-        ref2Names.get(actorRef) match {
+        context.watch(ref)
+        ref2Names.get(ref) match {
           case None =>
-            ref2Names(actorRef) = ArrayBuffer(name)
+            ref2Names(ref) = ArrayBuffer(name)
+
+          case Some(names) =>
+            names.append(name)
+        }
+    }
+  }
+
+  private def doRegister(name: String, system: ActorSystem, props: Props) {
+    name2Ref.get(name) match {
+      case Some(oldRef) =>
+        sender ! RegisterResultConflict(name, oldRef)
+
+      case None =>
+        val ref = system.actorOf(props)
+        sender ! RegisterResultOk(name, ref)
+
+        name2Ref(name) = ref
+
+        context.watch(ref)
+        ref2Names.get(ref) match {
+          case None =>
+            ref2Names(ref) = ArrayBuffer(name)
 
           case Some(names) =>
             names.append(name)
@@ -176,8 +225,8 @@ private class Registry(
 
   private def doLookup(name: String) {
     name2Ref.get(name) match {
-      case Some(actorRef) =>
-        sender ! LookupResultOk(name, actorRef)
+      case Some(ref) =>
+        sender ! LookupResultOk(name, ref)
 
       case None =>
         sender ! LookupResultNone(name)
