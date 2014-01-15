@@ -3,10 +3,10 @@ Glokka = Global + Akka
 Glokka is a Scala library that provides registration of global "name to actor
 mapping" for Akka cluster. See:
 
-* http://erlang.org/doc/man/global.html
-* http://doc.akka.io/docs/akka/2.2.3/scala/cluster-usage.html
+* `Erlang's "global" module <http://erlang.org/doc/man/global.html>`_
+* `Akka's cluster feature <http://doc.akka.io/docs/akka/2.2.3/scala/cluster-usage.html>`_
 
-Glokka is used `Xitrum <http://ngocdaothanh.github.io/xitrum/>`_ to implement
+Glokka is used in `Xitrum <http://ngocdaothanh.github.io/xitrum/>`_ to implement
 its distributed `SockJS <https://github.com/sockjs/sockjs-client>`_ feature.
 
 Start registry
