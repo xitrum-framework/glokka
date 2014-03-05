@@ -1,9 +1,7 @@
 package glokka
 
 import java.net.URLEncoder
-
 import scala.collection.immutable.SortedSet
-import scala.collection.mutable.{ArrayBuffer, Map => MMap}
 
 import akka.actor.{Actor, ActorRef, ActorSelection, PoisonPill, Props, RootActorPath}
 import akka.cluster.{Cluster, ClusterEvent, Member}
@@ -15,7 +13,7 @@ private object ClusterSingletonProxy {
 }
 
 private object HandOver
-private case class HandOverData(name2Ref: MMap[String, ActorRef], ref2Names: MMap[ActorRef, ArrayBuffer[String]])
+private case class HandOverData(name2Ref: Map[String, ActorRef], ref2Names: Map[ActorRef, Set[String]])
 
 private class ClusterSingletonProxy(proxyName: String) extends Actor {
   import ClusterSingletonProxy._
@@ -35,14 +33,18 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor {
           Props(classOf[Registry], false, name2Ref, ref2Names)
 
         case _ =>
-          Props(classOf[Registry], false, MMap[String, ActorRef](), MMap[ActorRef, ArrayBuffer[String]]())
+          val name2Ref  = Map.empty[String, ActorRef]
+          val ref2Names = Map.empty[ActorRef, Set[String]]
+          Props(classOf[Registry], false, name2Ref, ref2Names)
       }
     }
+
     val proxyProps = ClusterSingletonManager.props(
       singletonProps     = singletonPropsFactory,
       singletonName      = SINGLETON_NAME,
       terminationMessage = HandOver,
-      role               = None)
+      role               = None
+    )
 
     // Must use context.system.actorOf instead of context.actorOf, so that the
     // created actor is attached to the system, so that we have a stable path

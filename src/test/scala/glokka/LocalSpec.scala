@@ -9,11 +9,11 @@ import akka.actor.{Actor, ActorSystem, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 
-      class DummyActor extends Actor {
-        def receive = { case _ => }
-      }
+class DummyActor extends Actor {
+  def receive = { case _ => }
+}
 
-class ParserSpec extends Specification {
+class LocalSpec extends Specification {
   // Use "implicit" so that we can use actor DSL
   implicit val system = ActorSystem("ClusterSystem")
 
@@ -132,14 +132,14 @@ class ParserSpec extends Specification {
       })
 
       registry ! Registry.RegisterByRef("die", ref)
-      Thread.sleep(100)
+      Thread.sleep(500)
 
       val future1 = registry ? Registry.Lookup("die")
       val result1 = Await.result(future1, timeout.duration)
       result1 must haveClass[Registry.LookupResultOk]
 
       ref ! "die"
-      Thread.sleep(100)
+      Thread.sleep(500)
 
       val future2 = registry ? Registry.Lookup("die")
       val result2 = Await.result(future2, timeout.duration)

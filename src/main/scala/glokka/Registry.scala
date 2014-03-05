@@ -1,6 +1,6 @@
 package glokka
 
-import scala.collection.mutable.{ArrayBuffer, Map => MMap}
+import scala.collection.mutable.{ArrayBuffer, HashMap => MHashMap, MultiMap => MMultiMap, Set => MSet}
 import scala.concurrent.duration.{FiniteDuration, SECONDS}
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Cancellable, Props, Terminated}
@@ -24,10 +24,11 @@ object Registry {
     val config   = ConfigFactory.load()
     val provider = config.getString("akka.actor.provider")
 
-    if (provider == "akka.cluster.ClusterActorRefProvider")
+    if (provider == "akka.cluster.ClusterActorRefProvider") {
       system.actorOf(Props(classOf[ClusterSingletonProxy], proxyName))
-    else
-      system.actorOf(Props(classOf[Registry], true, MMap[String, ActorRef](), MMap[ActorRef, ArrayBuffer[String]]()))
+    } else {
+      system.actorOf(Props(classOf[Registry], true))
+    }
   }
 }
 
@@ -35,9 +36,8 @@ object Registry {
 
 // Avoid using stash feature in Akka because it requires the user of Glokka to
 // config non-default mailbox. It's a little tedious.
-//
-// May have to make things in Registry immutable so that they can be serializable
-// for cluster mode, when handover from a node to another occurs.
+
+// Using mutable data structures internally in actor is OK (for speed).
 
 private case class PendingMsg(sender: ActorRef, msg: Any)
 
@@ -46,37 +46,58 @@ private case class PendingCreateValue(creator: ActorRef, msgs: ArrayBuffer[Pendi
 
 private case class TimeoutCreate(name: String, creator: ActorRef)
 
-/**
- * @param name2Ref  The main lookup table
- * @param ref2Names The reverse lookup table to quickly unregister dead actors
- */
-private class Registry(
-    localMode: Boolean,
-    name2Ref:  MMap[String, ActorRef],
-    ref2Names: MMap[ActorRef, ArrayBuffer[String]]
-) extends Actor with ActorLogging {
+private class Registry(localMode: Boolean) extends Actor with ActorLogging {
   import Registry._
 
-  // Key-value, key is actor name
-  private val pendingCreateReqs = MMap[String, PendingCreateValue]()
+  // The main lookup table
+  private val name2Ref = new MHashMap[String, ActorRef]
 
-  // Reset state on restart
+  // The reverse lookup table to quickly unregister dead actors
+  private val ref2Names = new MHashMap[ActorRef, MSet[String]] with MMultiMap[ActorRef, String]
+
+  // Key is actor name
+  private val pendingCreateReqs = new MHashMap[String, PendingCreateValue]
+
+  /** This constructor is for data handover in cluster mode. */
+  def this(
+    localMode: Boolean,
+    immutableName2Ref: Map[String, ActorRef], immutableRef2Names: Map[ActorRef, Set[String]]
+  ) {
+    this(localMode)
+
+    // Convert immutable to mutable
+    name2Ref ++= immutableName2Ref
+    immutableRef2Names.foreach { case (k, set) =>
+      set.foreach { v => ref2Names.addBinding(k, v) }
+    }
+  }
+
   override def preStart() {
     if (localMode)
-      log.info(s"Glokka actor registry starts in local mode")
+      log.info("Glokka actor registry starts in local mode")
     else
-      log.info(s"Glokka actor registry starts in cluster mode")
+      log.info("Glokka actor registry starts in cluster mode")
 
+    super.preStart()
+  }
+
+  override def preRestart(reason: Throwable, message: Option[Any]) {
+    // Reset state on restart
     name2Ref.clear()
     ref2Names.clear()
     pendingCreateReqs.clear()
+
+    super.preRestart(reason, message)
   }
 
   def receive = {
     case msg @ LookupOrCreate(name, timeout) =>
       pendingCreateReqs.get(name) match {
-        case None                                 => doLookupOrCreate(name, timeout)
-        case Some(PendingCreateValue(_, msgs, _)) => msgs.append(PendingMsg(sender, msg))
+        case None =>
+          doLookupOrCreate(name, timeout)
+
+        case Some(PendingCreateValue(_, msgs, _)) =>
+          msgs.append(PendingMsg(sender, msg))
       }
 
     case CancelCreate(name) =>
@@ -112,8 +133,11 @@ private class Registry(
 
     case msg @ Lookup(name) =>
       pendingCreateReqs.get(name) match {
-        case None                                 => doLookup(name)
-        case Some(PendingCreateValue(_, msgs, _)) => msgs.append(PendingMsg(sender, msg))
+        case None =>
+          doLookup(name)
+
+        case Some(PendingCreateValue(_, msgs, _)) =>
+          msgs.append(PendingMsg(sender, msg))
       }
 
     case Terminated(ref) =>
@@ -123,9 +147,14 @@ private class Registry(
 
     // Only used in cluster mode, see ClusterSingletonProxy
     case HandOver =>
+      // Convert mutable to immutable
+      val immutableName2Ref  = name2Ref.toMap
+      val immutableRef2Names = ref2Names.toMap.mapValues { mset => mset.toSet }
+
       // Reply to ClusterSingletonManager with hand over data,
       // which will be passed as parameter to new consumer singleton
-      context.parent ! (name2Ref, ref2Names)
+      context.parent ! (immutableName2Ref, immutableRef2Names)
+
       context.stop(self)
   }
 
@@ -187,17 +216,9 @@ private class Registry(
 
       case None =>
         sender ! RegisterResultOk(name, ref)
-
-        name2Ref(name) = ref
-
         context.watch(ref)
-        ref2Names.get(ref) match {
-          case None =>
-            ref2Names(ref) = ArrayBuffer(name)
-
-          case Some(names) =>
-            names.append(name)
-        }
+        name2Ref(name) = ref
+        ref2Names.addBinding(ref, name)
     }
   }
 
@@ -209,17 +230,9 @@ private class Registry(
       case None =>
         val ref = system.actorOf(props)
         sender ! RegisterResultOk(name, ref)
-
-        name2Ref(name) = ref
-
         context.watch(ref)
-        ref2Names.get(ref) match {
-          case None =>
-            ref2Names(ref) = ArrayBuffer(name)
-
-          case Some(names) =>
-            names.append(name)
-        }
+        name2Ref(name) = ref
+        ref2Names.addBinding(ref, name)
     }
   }
 
