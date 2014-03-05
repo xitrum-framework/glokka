@@ -9,6 +9,8 @@ mapping" for Akka cluster. See:
 Glokka is used in `Xitrum <http://ngocdaothanh.github.io/xitrum/>`_ to implement
 its distributed `SockJS <https://github.com/sockjs/sockjs-client>`_ feature.
 
+See `Glokka's Scaladoc <http://ngocdaothanh.github.io/glokka>`_.
+
 Start registry
 --------------
 
