@@ -2,7 +2,7 @@ organization := "tv.cntt"
 
 name := "glokka"
 
-version := "1.5-SNAPSHOT"
+version := "1.6-SNAPSHOT"
 
 scalaVersion := "2.10.3"
 
@@ -14,11 +14,11 @@ scalacOptions ++= Seq("-deprecation", "-feature", "-unchecked")
 // java.lang.UnsupportedClassVersionError: Unsupported major.minor version 51.0
 javacOptions ++= Seq("-source", "1.6", "-target", "1.6")
 
-libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.2.4"
+libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.3.0"
 
-libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.2.4"
+libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.3.0"
 
-libraryDependencies += "com.typesafe.akka" %% "akka-contrib" % "2.2.4"
+libraryDependencies += "com.typesafe.akka" %% "akka-contrib" % "2.3.0"
 
 libraryDependencies += "org.specs2" %% "specs2" % "2.3.8" % "test"
 

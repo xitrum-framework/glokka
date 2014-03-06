@@ -12,8 +12,7 @@ private object ClusterSingletonProxy {
   val SINGLETON_NAME = URLEncoder.encode("GlokkaActorRegistry", "UTF-8")
 }
 
-private object HandOver
-private case class HandOverData(name2Ref: Map[String, ActorRef], ref2Names: Map[ActorRef, Set[String]])
+private case object TerminateRegistry
 
 private class ClusterSingletonProxy(proxyName: String) extends Actor {
   import ClusterSingletonProxy._
@@ -27,22 +26,10 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor {
   override def preStart() {
     Cluster(context.system).subscribe(self, classOf[ClusterEvent.ClusterDomainEvent])
 
-    val singletonPropsFactory: Option[Any] => Props = handOverData => {
-      handOverData match {
-        case Some(HandOverData(name2Ref, ref2Names)) =>
-          Props(classOf[Registry], false, name2Ref, ref2Names)
-
-        case _ =>
-          val name2Ref  = Map.empty[String, ActorRef]
-          val ref2Names = Map.empty[ActorRef, Set[String]]
-          Props(classOf[Registry], false, name2Ref, ref2Names)
-      }
-    }
-
     val proxyProps = ClusterSingletonManager.props(
-      singletonProps     = singletonPropsFactory,
+      singletonProps     = Props(classOf[Registry], false),
       singletonName      = SINGLETON_NAME,
-      terminationMessage = HandOver,
+      terminationMessage = TerminateRegistry,
       role               = None
     )
 
@@ -74,7 +61,8 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor {
       membersByAge -= m
 
     case other =>
-      leader.foreach { _.tell(other, sender) }
+      val s = sender()
+      leader.foreach { _.tell(other, s) }
   }
 
   private def leader: Option[ActorSelection] =

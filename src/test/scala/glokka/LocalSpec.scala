@@ -2,6 +2,7 @@ package glokka
 
 import org.specs2.mutable._
 
+import java.util.concurrent.TimeUnit
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
@@ -18,7 +19,7 @@ class LocalSpec extends Specification {
   implicit val system = ActorSystem("ClusterSystem")
 
   // For "ask" timeout
-  implicit val timeout = Timeout(5000)
+  implicit val timeout = Timeout(5000, TimeUnit.SECONDS)
 
   val registry = Registry.start(system, "test")
 
@@ -69,7 +70,7 @@ class LocalSpec extends Specification {
       import akka.actor.ActorDSL._
 
       val ref = actor(new Act {
-        become { case "hello" => sender ! "hi" }
+        become { case "hello" => sender() ! "hi" }
       })
 
       val future = registry ? Registry.RegisterByRef("name", ref)
@@ -86,7 +87,7 @@ class LocalSpec extends Specification {
       import akka.actor.ActorDSL._
 
       val ref = actor(new Act {
-        become { case "hello" => sender ! "hi" }
+        become { case "hello" => sender() ! "hi" }
       })
 
       val future = registry ? Registry.RegisterByRef("name2", ref)

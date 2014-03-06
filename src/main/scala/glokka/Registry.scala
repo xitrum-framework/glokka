@@ -3,7 +3,7 @@ package glokka
 import scala.collection.mutable.{ArrayBuffer, HashMap => MHashMap, MultiMap => MMultiMap, Set => MSet}
 import scala.concurrent.duration.{FiniteDuration, SECONDS}
 
-import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Cancellable, Props, Terminated}
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Cancellable, PoisonPill, Props, Terminated}
 import com.typesafe.config.ConfigFactory
 
 object Registry {
@@ -39,7 +39,7 @@ object Registry {
 
 // Using mutable data structures internally in actor is OK (for speed).
 
-private case class PendingMsg(sender: ActorRef, msg: Any)
+private case class PendingMsg(poster: ActorRef, msg: Any)
 
 // Key-value, key is actor name
 private case class PendingCreateValue(creator: ActorRef, msgs: ArrayBuffer[PendingMsg], cancellable: Cancellable)
@@ -57,20 +57,6 @@ private class Registry(localMode: Boolean) extends Actor with ActorLogging {
 
   // Key is actor name
   private val pendingCreateReqs = new MHashMap[String, PendingCreateValue]
-
-  /** This constructor is for data handover in cluster mode. */
-  def this(
-    localMode: Boolean,
-    immutableName2Ref: Map[String, ActorRef], immutableRef2Names: Map[ActorRef, Set[String]]
-  ) {
-    this(localMode)
-
-    // Convert immutable to mutable
-    name2Ref ++= immutableName2Ref
-    immutableRef2Names.foreach { case (k, set) =>
-      set.foreach { v => ref2Names.addBinding(k, v) }
-    }
-  }
 
   override def preStart() {
     if (localMode)
@@ -97,12 +83,12 @@ private class Registry(localMode: Boolean) extends Actor with ActorLogging {
           doLookupOrCreate(name, timeout)
 
         case Some(PendingCreateValue(_, msgs, _)) =>
-          msgs.append(PendingMsg(sender, msg))
+          msgs.append(PendingMsg(sender(), msg))
       }
 
     case CancelCreate(name) =>
       // Only the one who sent LookupOrCreate can now cancel
-      doCancel(name, sender, false)
+      doCancel(name, sender(), false)
 
     case TimeoutCreate(name, maybeTheCreator) =>
       doCancel(name, maybeTheCreator, true)
@@ -113,15 +99,16 @@ private class Registry(localMode: Boolean) extends Actor with ActorLogging {
           doRegister(name, ref)
 
         case Some(PendingCreateValue(creator, msgs, cancellable)) =>
-          if (sender == creator) {
+          val s = sender()
+          if (s == creator) {
             cancellable.cancel()  // Do this as soon as possible
 
             doRegister(name, ref)
 
             pendingCreateReqs.remove(name)
-            msgs.foreach { msg => self.tell(msg.msg, msg.sender) }
+            msgs.foreach { msg => self.tell(msg.msg, msg.poster) }
           } else {
-            msgs.append(PendingMsg(sender, msg))
+            msgs.append(PendingMsg(s, msg))
           }
       }
 
@@ -137,7 +124,7 @@ private class Registry(localMode: Boolean) extends Actor with ActorLogging {
           doLookup(name)
 
         case Some(PendingCreateValue(_, msgs, _)) =>
-          msgs.append(PendingMsg(sender, msg))
+          msgs.append(PendingMsg(sender(), msg))
       }
 
     case Terminated(ref) =>
@@ -146,14 +133,9 @@ private class Registry(localMode: Boolean) extends Actor with ActorLogging {
       }
 
     // Only used in cluster mode, see ClusterSingletonProxy
-    case HandOver =>
-      // Convert mutable to immutable
-      val immutableName2Ref  = name2Ref.toMap
-      val immutableRef2Names = ref2Names.toMap.mapValues { mset => mset.toSet }
-
-      // Reply to ClusterSingletonManager with hand over data,
-      // which will be passed as parameter to new consumer singleton
-      context.parent ! (immutableName2Ref, immutableRef2Names)
+    case TerminateRegistry =>
+      // For consistency, tell all actors in this registry to stop
+      ref2Names.keys.foreach(_ ! PoisonPill)
 
       context.stop(self)
   }
@@ -166,32 +148,33 @@ private class Registry(localMode: Boolean) extends Actor with ActorLogging {
         doRegister(msg.name, msg.system, msg.props)
 
       case Some(PendingCreateValue(creator, msgs, cancellable)) =>
-        if (sender == creator) {
+        val s = sender()
+        if (s == creator) {
           cancellable.cancel()  // Do this as soon as possible
 
           doRegister(msg.name, msg.system, msg.props)
 
           pendingCreateReqs.remove(msg.name)
-          msgs.foreach { msg => self.tell(msg.msg, msg.sender) }
+          msgs.foreach { msg => self.tell(msg.msg, msg.poster) }
         } else {
-          msgs.append(PendingMsg(sender, msg))
+          msgs.append(PendingMsg(s, msg))
         }
     }
   }
 
   private def doLookupOrCreate(name: String, timeoutInSeconds: Int) {
+    val s = sender()
     name2Ref.get(name) match {
       case Some(ref) =>
-        sender ! LookupResultOk(name, ref)
+        s ! LookupResultOk(name, ref)
 
       case None =>
         val delay = FiniteDuration(timeoutInSeconds, SECONDS)
-        val msg   = TimeoutCreate(name, sender)
-        import context.dispatcher
-        val cancellable = context.system.scheduler.scheduleOnce(delay, self, msg)
+        val msg   = TimeoutCreate(name, s)
+        val cancellable = context.system.scheduler.scheduleOnce(delay, self, msg)(context.dispatcher)
 
-        sender ! LookupResultNone(name)
-        pendingCreateReqs(name) = PendingCreateValue(sender, ArrayBuffer(), cancellable)
+        s ! LookupResultNone(name)
+        pendingCreateReqs(name) = PendingCreateValue(s, ArrayBuffer(), cancellable)
     }
   }
 
@@ -201,7 +184,7 @@ private class Registry(localMode: Boolean) extends Actor with ActorLogging {
         if (!becauseOfTimeout) cancellable.cancel()  // Do this as soon as possible
 
         pendingCreateReqs.remove(name)
-        msgs.foreach { msg => self.tell(msg.msg, msg.sender) }
+        msgs.foreach { msg => self.tell(msg.msg, msg.poster) }
       }
     }
   }
@@ -210,12 +193,12 @@ private class Registry(localMode: Boolean) extends Actor with ActorLogging {
     name2Ref.get(name) match {
       case Some(oldRef) =>
         if (oldRef == ref)
-          sender ! RegisterResultOk(name, oldRef)
+          sender() ! RegisterResultOk(name, oldRef)
         else
-          sender ! RegisterResultConflict(name, oldRef)
+          sender() ! RegisterResultConflict(name, oldRef)
 
       case None =>
-        sender ! RegisterResultOk(name, ref)
+        sender() ! RegisterResultOk(name, ref)
         context.watch(ref)
         name2Ref(name) = ref
         ref2Names.addBinding(ref, name)
@@ -225,11 +208,11 @@ private class Registry(localMode: Boolean) extends Actor with ActorLogging {
   private def doRegister(name: String, system: ActorSystem, props: Props) {
     name2Ref.get(name) match {
       case Some(oldRef) =>
-        sender ! RegisterResultConflict(name, oldRef)
+        sender() ! RegisterResultConflict(name, oldRef)
 
       case None =>
         val ref = system.actorOf(props)
-        sender ! RegisterResultOk(name, ref)
+        sender() ! RegisterResultOk(name, ref)
         context.watch(ref)
         name2Ref(name) = ref
         ref2Names.addBinding(ref, name)
@@ -239,10 +222,10 @@ private class Registry(localMode: Boolean) extends Actor with ActorLogging {
   private def doLookup(name: String) {
     name2Ref.get(name) match {
       case Some(ref) =>
-        sender ! LookupResultOk(name, ref)
+        sender() ! LookupResultOk(name, ref)
 
       case None =>
-        sender ! LookupResultNone(name)
+        sender() ! LookupResultNone(name)
     }
   }
 }
