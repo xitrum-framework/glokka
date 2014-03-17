@@ -54,13 +54,23 @@ If the named actor exists, the registry will just return it. You will receive:
 
   Registry.Found(actorName, actorRef)
 
-Otherwise ``props`` will be used to create the actor locally. You will receive:
+Otherwise ``props`` will be used to create the actor locally (when the actor dies,
+it will be unregistered automatically). You will receive:
 
 ::
 
   Registry.Created(actorName, actorRef)
 
-When the actor dies, it will be unregistered automatically.
+If you don't need to differentiate ``Found`` and ``Created``:
+
+::
+
+  registry ! Registry.Register(actorName, props)
+  context.become {
+    case msg: Registry.FoundOrCreated =>
+      val actorName = msg.name
+      val actorRef  = msg.ref
+  }
 
 Lookup named actor in the registry
 ----------------------------------
