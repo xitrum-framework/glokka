@@ -3,7 +3,8 @@ package glokka
 import scala.collection.mutable.{ArrayBuffer, HashMap => MHashMap, MultiMap => MMultiMap, Set => MSet}
 import scala.concurrent.duration.{FiniteDuration, SECONDS}
 
-import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Cancellable, PoisonPill, Props, Terminated}
+import akka.actor.{Actor, ActorRef, ActorSystem, Cancellable, PoisonPill, Props, Terminated}
+import akka.event.Logging
 import com.typesafe.config.ConfigFactory
 
 object Registry {
@@ -23,10 +24,12 @@ object Registry {
   def start(system: ActorSystem, proxyName: String): ActorRef = {
     val config   = ConfigFactory.load()
     val provider = config.getString("akka.actor.provider")
-
+    val log      = Logging.getLogger(system, this)
     if (provider == "akka.cluster.ClusterActorRefProvider") {
+      log.info(s"""Glokka actor registry "$proxyName" starts in cluster mode""")
       system.actorOf(Props(classOf[ClusterSingletonProxy], proxyName))
     } else {
+      log.info(s"""Glokka actor registry "$proxyName" starts in local mode""")
       system.actorOf(Props(classOf[Registry], true))
     }
   }
@@ -46,7 +49,7 @@ private case class PendingCreateValue(creator: ActorRef, msgs: ArrayBuffer[Pendi
 
 private case class TimeoutCreate(name: String, creator: ActorRef)
 
-private class Registry(localMode: Boolean) extends Actor with ActorLogging {
+private class Registry(localMode: Boolean) extends Actor {
   import Registry._
 
   // The main lookup table
@@ -57,15 +60,6 @@ private class Registry(localMode: Boolean) extends Actor with ActorLogging {
 
   // Key is actor name
   private val pendingCreateReqs = new MHashMap[String, PendingCreateValue]
-
-  override def preStart() {
-    if (localMode)
-      log.info("Glokka actor registry starts in local mode")
-    else
-      log.info("Glokka actor registry starts in cluster mode")
-
-    super.preStart()
-  }
 
   override def preRestart(reason: Throwable, message: Option[Any]) {
     // Reset state on restart
