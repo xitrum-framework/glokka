@@ -2,7 +2,7 @@ organization := "tv.cntt"
 
 name := "glokka"
 
-version := "1.6-SNAPSHOT"
+version := "1.7-SNAPSHOT"
 
 scalaVersion := "2.10.3"
 
@@ -20,7 +20,7 @@ libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.3.0"
 
 libraryDependencies += "com.typesafe.akka" %% "akka-contrib" % "2.3.0"
 
-libraryDependencies += "org.specs2" %% "specs2" % "2.3.8" % "test"
+libraryDependencies += "org.specs2" %% "specs2" % "2.3.10" % "test"
 
 // For "sbt console" used while developing for cluster mode
 unmanagedClasspath in Compile <+= (baseDirectory) map { bd => Attributed.blank(bd / "config_example") }
