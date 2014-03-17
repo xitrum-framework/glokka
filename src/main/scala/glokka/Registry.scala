@@ -11,9 +11,12 @@ object Registry {
   case class Register(name: String, props: Props)
   case class Lookup(name: String)
 
-  case class Found(name: String, ref: ActorRef)
+  abstract class FoundOrCreated { def name: String; def ref: ActorRef }
+
+  case class Found(name: String, ref: ActorRef) extends FoundOrCreated
+  case class Created(name: String, ref: ActorRef) extends FoundOrCreated
+
   case class NotFound(name: String)
-  case class Created(name: String, ref: ActorRef)
 
   private val clusterMode: Boolean = {
     val config   = ConfigFactory.load()
