@@ -24,114 +24,62 @@ In your Scala code:
 
 ::
 
-  import glokka.Registry
+  import glokka.{Registry, Register, Lookup, Result}
 
-  val system   = ActorSystem("ClusterSystem")
-  val registry = Registry.start(system = system, proxyName = "my proxy name")
+  val system    = ActorSystem("MyClusterSystem")
+  val proxyName = "my proxy name"
+  val registry  = Registry.start(system, proxyName)
 
-You can start multiple registry actors. They must have different ``proxyName``.
-For convenience, ``proxyName`` can be any String, you don't have to URI-escape it.
+* You can start multiple registry actors. They must have different ``proxyName``.
+* For convenience, ``proxyName`` can be any String, you don't have to URI-escape it.
 
-Register
---------
-
-Send:
-
-::
-
-  // For convenience, "name" can be any String, you don't have to URI-escape it.
-  registry ! Registry.RegisterByRef("name", actor ref to register)
-
-Or:
-
-::
-
-  // The registry may its own actor system to create the actor ref to register.
-  registry ! Registry.RegisterByProps("name", props)
-
-Or:
-
-::
-
-  // The registry may use the specified actor system to create the actor ref to register.
-  registry ! Registry.RegisterBySystemAndProps("name", actor system, props)
-
-You will receive:
-
-::
-
-  Registry.RegisterResultOk("name", actor ref)
-
-Or:
-
-::
-
-  Registry.RegisterResultConflict("name", actor ref that's already been registered before your call)
-
-When the registered actor dies, it will be unregistered automatically.
-
-Lookup
-------
+Register actor to the registry under a name
+-------------------------------------------
 
 Send:
 
 ::
 
-  registry ! Registry.Lookup("name")
+  // For convenience, ``actorName`` can be any String, you don't have to URI-escape it.
+  val actorName = "my actor name"
+
+  // Props to create the actor you want to register.
+  val props = ...
+
+  registry ! Registry.Register(actorName, props)
+
+If the named actor exists, the registry will just return it. You will receive:
+
+::
+
+  Registry.Found(actorName, actorRef)
+
+Otherwise ``props`` will be used to create the actor locally. You will receive:
+
+::
+
+  Registry.Created(actorName, actorRef)
+
+When the actor dies, it will be unregistered automatically.
+
+Lookup named actor in the registry
+----------------------------------
+
+Send:
+
+::
+
+  registry ! Lookup(actorName)
 
 You will receive:
 
 ::
 
-  Registry.LookupResultOk("name", actor ref)
+  Found(actorName, actorRef)
 
 Or:
 
-::
-
-  Registry.LookupResultNone("name")
-
-Lookup or create
-----------------
-
-If you want to lookup a named actor, and when it does not exist, create and
-register it:
-
-::
-
-  registry ! Registry.LookupOrCreate("name", timeoutInSeconds = 1)
-
-``timeoutInSeconds`` defaults to 5:
-
-::
-
-  registry ! Registry.LookupOrCreate("name")
-
-You will receive:
-
-::
-
-  Registry.LookupResultOk("name", actor ref)
-
-Or:
-
-::
-
-  Registry.LookupResultNone("name")
-
-In case of ``LookupResultNone``, you have 5s (see above) to register (see the
-Register section). You will receive either ``Registry.RegisterResultOk`` or
-``Registry.RegisterResultConflict``.
-
-If you don't want to register any more:
-
-::
-
-  registry ! Registry.CancelCreate("name")
-
-During the wait time, if there are lookup or register messages sent to the registry
-(e.g. from other places), they will be temporarily pended. They will be processed
-after you send ``Register`` or ``CancelCreate`` or timeout occurs.
+  NotFound(actorName)
 
 Cluster
 -------
@@ -164,8 +112,8 @@ source code example above and the config below):
 
     cluster {
       seed-nodes = [
-        "akka.tcp://ClusterSystem@127.0.0.1:2551",
-        "akka.tcp://ClusterSystem@127.0.0.1:2552"]
+        "akka.tcp://MyClusterSystem@127.0.0.1:2551",
+        "akka.tcp://MyClusterSystem@127.0.0.1:2552"]
 
       auto-down-unreachable-after = 10s
     }
