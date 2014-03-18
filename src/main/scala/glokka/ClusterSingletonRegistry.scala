@@ -10,6 +10,8 @@ private object ClusterRegistry {
   case class LookupOrCreate(name: String, timeoutInSeconds: Int = 60)
   case class RegisterByRef(name: String, ref: ActorRef)
 
+  case object HaveClusterSingletonRegistryStarted
+  case object ClusterSingletonRegistryStarted
   case object TerminateRegistry
 }
 
@@ -46,7 +48,7 @@ During the wait time, if there are lookup or register messages sent to the regis
 (e.g. from other places), they will be temporarily pended. They will be processed
 after you send ``Register`` or timeout occurs.
 */
-private class ClusterSingletonRegistry extends Actor {
+private class ClusterSingletonRegistry(clusterSingletonProxyRef: ActorRef) extends Actor {
   import Registry._
   import ClusterRegistry._
 
@@ -69,6 +71,10 @@ private class ClusterSingletonRegistry extends Actor {
   private val pendingCreateReqs = new MHashMap[String, PendingCreateValue]
 
   //----------------------------------------------------------------------------
+
+  override def preStart() {
+    clusterSingletonProxyRef ! ClusterSingletonRegistryStarted
+  }
 
   override def preRestart(reason: Throwable, message: Option[Any]) {
     // Reset state on restart

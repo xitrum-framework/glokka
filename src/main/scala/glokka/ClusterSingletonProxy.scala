@@ -24,6 +24,8 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor with Stash 
 
   private[this] var membersByAge: SortedSet[Member] = SortedSet.empty(ageOrdering)
 
+  private var clusterSingletonRegistryStarted = false
+
   //----------------------------------------------------------------------------
   // Subscribe to MemberEvent, re-subscribe when restart
 
@@ -31,7 +33,7 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor with Stash 
     Cluster(context.system).subscribe(self, classOf[ClusterEvent.ClusterDomainEvent])
 
     val proxyProps = ClusterSingletonManager.props(
-      singletonProps     = Props(classOf[ClusterSingletonRegistry]),
+      singletonProps     = Props(classOf[ClusterSingletonRegistry], self),
       singletonName      = SINGLETON_NAME,
       terminationMessage = ClusterRegistry.TerminateRegistry,
       role               = None
@@ -47,7 +49,9 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor with Stash 
     Cluster(context.system).unsubscribe(self)
   }
 
-  def receive = receiveClusterEvents orElse receiveRegisterAndLookup
+  // Giving cluster events more priority might make clusterSingletonRegistryOpt
+  // more reliable
+  def receive = receiveClusterEvents orElse receiveClusterSingletonRegistryStarted
 
   //----------------------------------------------------------------------------
 
@@ -62,6 +66,15 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor with Stash 
       membersByAge -= m
   }
 
+  private def receiveClusterSingletonRegistryStarted: Actor.Receive = {
+    case ClusterSingletonRegistryStarted =>
+      context.become(receiveClusterEvents orElse receiveRegisterAndLookup)
+      unstashAll()
+
+    case _ =>
+      stash()
+  }
+
   private def receiveRegisterAndLookup: Actor.Receive = {
     case Register(name, props) =>
       clusterSingletonRegistryOpt.foreach { leader =>
@@ -73,6 +86,8 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor with Stash 
       clusterSingletonRegistryOpt.foreach { _.tell(lookup, sender()) }
 
     case _ =>
+      // Ignore all other messages, like cluster events not handled by
+      // receiveClusterEvents
   }
 
   private def receiveLookupOrCreateResult(requester: ActorRef, name: String, props: Props): Actor.Receive = {

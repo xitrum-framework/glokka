@@ -21,10 +21,9 @@ class OneNodeModeSpec extends Specification {
   private implicit val system = ActorSystem("MyClusterSystem")
 
   // For "ask" timeout
-  private implicit val timeout = Timeout(5, TimeUnit.SECONDS)
+  private implicit val timeout = Timeout(60, TimeUnit.SECONDS)
 
   private val registry = Registry.start(system, "test")
-  Thread.sleep(10000)
 
   "One-node mode (local mode or cluster with only one node)" should {
     "Register result Created" in {
