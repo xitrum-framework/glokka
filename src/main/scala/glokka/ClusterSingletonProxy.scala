@@ -30,6 +30,8 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor with Stash 
   // Subscribe to MemberEvent, re-subscribe when restart
 
   override def preStart() {
+    super.preStart()
+
     Cluster(context.system).subscribe(self, classOf[ClusterEvent.ClusterDomainEvent])
 
     val proxyProps = ClusterSingletonManager.props(
@@ -46,6 +48,7 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor with Stash 
   }
 
   override def postStop() {
+    super.postStop()
     Cluster(context.system).unsubscribe(self)
   }
 

@@ -2,9 +2,7 @@ package glokka
 
 import scala.collection.mutable.{ArrayBuffer, HashMap => MHashMap, MultiMap => MMultiMap, Set => MSet}
 import scala.concurrent.duration.{FiniteDuration, SECONDS}
-import akka.actor.{Actor, ActorRef, ActorSystem, Cancellable, PoisonPill, Props, Terminated}
-
-private case class StashMsg(msg: Any, requester: ActorRef)
+import akka.actor.{Actor, ActorRef, ActorSystem, PoisonPill, Terminated}
 
 private object ClusterRegistry {
   case class LookupOrCreate(name: String, timeoutInSeconds: Int = 60)
@@ -54,7 +52,11 @@ private class ClusterSingletonRegistry(clusterSingletonProxyRef: ActorRef) exten
 
   // Using mutable data structures internally in actor is OK (for speed) -------
 
-  // Key-value, key is actor name
+  // Handle stash manually instead of using Akka's stash feature, because we want
+  // to handle timeout per actor creation (per registry name)
+  private case class StashMsg(msg: Any, requester: ActorRef)
+
+  // See pendingCreateReqs below
   private case class PendingCreateValue(creator: ActorRef, msgs: ArrayBuffer[StashMsg])
 
   private case class TimeoutCreate(name: String, creator: ActorRef)
@@ -73,16 +75,17 @@ private class ClusterSingletonRegistry(clusterSingletonProxyRef: ActorRef) exten
   //----------------------------------------------------------------------------
 
   override def preStart() {
+    super.preStart()
     clusterSingletonProxyRef ! ClusterSingletonRegistryStarted
   }
 
   override def preRestart(reason: Throwable, message: Option[Any]) {
+    super.preRestart(reason, message)
+
     // Reset state on restart
     name2Ref.clear()
     ref2Names.clear()
     pendingCreateReqs.clear()
-
-    super.preRestart(reason, message)
   }
 
   def receive = {
