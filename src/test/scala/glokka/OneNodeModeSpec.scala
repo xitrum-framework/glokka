@@ -17,13 +17,11 @@ class DummyActor extends Actor {
 class OneNodeModeSpec extends Specification {
   import Registry._
 
-  // Use "implicit" so that we can use actor DSL
-  private implicit val system = ActorSystem("MyClusterSystem")
+  private val system   = ActorSystem("MyClusterSystem")
+  private val registry = Registry.start(system, "test")
 
   // For "ask" timeout
   private implicit val timeout = Timeout(60, TimeUnit.SECONDS)
-
-  private val registry = Registry.start(system, "test")
 
   "One-node mode (local mode or cluster with only one node)" should {
     "Register result Created" in {
