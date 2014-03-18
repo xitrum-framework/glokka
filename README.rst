@@ -90,6 +90,8 @@ You will receive:
 
 Or:
 
+::
+
   NotFound(actorName)
 
 Cluster
