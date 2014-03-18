@@ -3,7 +3,10 @@ package glokka
 import java.net.URLEncoder
 import scala.collection.immutable.SortedSet
 
-import akka.actor.{Actor, ActorRef, ActorSelection, Props, RootActorPath, Stash}
+import akka.actor.{
+  Actor, ActorRef, PoisonPill, Props, Stash,
+  ActorSelection, RootActorPath, Identify, ActorIdentity
+}
 import akka.cluster.{Cluster, ClusterEvent, Member}
 import akka.contrib.pattern.ClusterSingletonManager
 
@@ -21,10 +24,9 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor with Stash 
 
   // Sort by age, oldest first
   private[this] val ageOrdering = Ordering.fromLessThan[Member] { (a, b) => a.isOlderThan(b) }
-
   private[this] var membersByAge: SortedSet[Member] = SortedSet.empty(ageOrdering)
 
-  private var clusterSingletonRegistryStarted = false
+  private[this] var clusterSingletonRegistryRef: ActorRef = _
 
   //----------------------------------------------------------------------------
   // Subscribe to MemberEvent, re-subscribe when restart
@@ -37,7 +39,7 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor with Stash 
     val proxyProps = ClusterSingletonManager.props(
       singletonProps     = Props(classOf[ClusterSingletonRegistry], self),
       singletonName      = SINGLETON_NAME,
-      terminationMessage = ClusterRegistry.TerminateRegistry,
+      terminationMessage = PoisonPill,
       role               = None
     )
 
@@ -54,39 +56,59 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor with Stash 
 
   // Giving cluster events more priority might make clusterSingletonRegistryOpt
   // more reliable
-  def receive = receiveClusterEvents orElse receiveClusterSingletonRegistryStarted
+  def receive = receiveClusterEvents orElse receiveClusterSingletonRegistryIdentity
 
   //----------------------------------------------------------------------------
 
   private def receiveClusterEvents: Actor.Receive = {
     case clusterState: ClusterEvent.CurrentClusterState =>
       membersByAge = SortedSet.empty(ageOrdering) ++ clusterState.members
+      clusterSingletonRegistryOpt.foreach(_ ! Identify(None))
 
     case ClusterEvent.MemberUp(m) =>
+      val opt1 = membersByAge.headOption
       membersByAge += m
+      val opt2 = membersByAge.headOption
+      if (opt1 != opt2) {
+        clusterSingletonRegistryOpt.foreach(_ ! Identify(None))
+        context.become(receiveClusterEvents orElse receiveClusterSingletonRegistryIdentity)
+      }
 
     case ClusterEvent.MemberRemoved(m, _) =>
+      val opt1 = membersByAge.headOption
       membersByAge -= m
+      val opt2 = membersByAge.headOption
+      if (opt1 != opt2) {
+        clusterSingletonRegistryOpt.foreach(_ ! Identify(None))
+        context.become(receiveClusterEvents orElse receiveClusterSingletonRegistryIdentity)
+      }
   }
 
-  private def receiveClusterSingletonRegistryStarted: Actor.Receive = {
-    case ClusterSingletonRegistryStarted =>
+  private def receiveClusterSingletonRegistryIdentity: Actor.Receive = {
+    case ActorIdentity(_, Some(ref)) =>
+      clusterSingletonRegistryRef = ref
       context.become(receiveClusterEvents orElse receiveRegisterAndLookup)
       unstashAll()
 
+    case ActorIdentity(_, None) =>
+      // Try again
+      clusterSingletonRegistryOpt.foreach(_ ! Identify(None))
+
+    case msg: Register => stash()
+    case msg: Lookup   => stash()
+
     case _ =>
-      stash()
+      // Ignore all other messages, like cluster events not handled by
+      // receiveClusterEvents
   }
 
   private def receiveRegisterAndLookup: Actor.Receive = {
     case Register(name, props) =>
-      clusterSingletonRegistryOpt.foreach { leader =>
-        leader ! LookupOrCreate(name)
-        context.become(receiveClusterEvents orElse receiveLookupOrCreateResult(sender(), name, props))
-      }
+      clusterSingletonRegistryRef ! LookupOrCreate(name)
+      context.become(receiveClusterEvents orElse receiveLookupOrCreateResult(sender(), name, props))
 
     case lookup: Lookup =>
-      clusterSingletonRegistryOpt.foreach { _.tell(lookup, sender()) }
+      clusterSingletonRegistryRef.tell(lookup, sender())
 
     case _ =>
       // Ignore all other messages, like cluster events not handled by

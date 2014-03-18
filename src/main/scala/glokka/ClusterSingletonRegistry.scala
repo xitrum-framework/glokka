@@ -7,10 +7,6 @@ import akka.actor.{Actor, ActorRef, ActorSystem, PoisonPill, Terminated}
 private object ClusterRegistry {
   case class LookupOrCreate(name: String, timeoutInSeconds: Int = 60)
   case class RegisterByRef(name: String, ref: ActorRef)
-
-  case object HaveClusterSingletonRegistryStarted
-  case object ClusterSingletonRegistryStarted
-  case object TerminateRegistry
 }
 
 /**
@@ -74,9 +70,9 @@ private class ClusterSingletonRegistry(clusterSingletonProxyRef: ActorRef) exten
 
   //----------------------------------------------------------------------------
 
-  override def preStart() {
-    super.preStart()
-    clusterSingletonProxyRef ! ClusterSingletonRegistryStarted
+  override def postStop() {
+    // For consistency, tell all actors in this registry to stop
+    ref2Names.keys.foreach(_ ! PoisonPill)
   }
 
   override def preRestart(reason: Throwable, message: Option[Any]) {
@@ -138,14 +134,9 @@ private class ClusterSingletonRegistry(clusterSingletonProxyRef: ActorRef) exten
       ref2Names.remove(ref).foreach { names =>
         names.foreach { name => name2Ref.remove(name) }
       }
-
-    // Only used in cluster mode, see ClusterSingletonProxy
-    case TerminateRegistry =>
-      // For consistency, tell all actors in this registry to stop
-      ref2Names.keys.foreach(_ ! PoisonPill)
-
-      context.stop(self)
   }
+
+
 
   //----------------------------------------------------------------------------
 

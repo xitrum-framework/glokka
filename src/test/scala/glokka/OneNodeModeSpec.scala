@@ -5,6 +5,7 @@ import org.specs2.mutable._
 import java.util.concurrent.TimeUnit
 import scala.concurrent.Await
 import scala.concurrent.duration._
+import scala.util.Random
 
 import akka.actor.{Actor, ActorSystem, Props}
 import akka.pattern.ask
@@ -17,16 +18,20 @@ class DummyActor extends Actor {
 class OneNodeModeSpec extends Specification {
   import Registry._
 
+  private val rand = new Random
+
   private val system   = ActorSystem("MyClusterSystem")
   private val registry = Registry.start(system, "test")
 
   // For "ask" timeout
   private implicit val timeout = Timeout(60, TimeUnit.SECONDS)
 
+  private def randomName() = rand.nextInt.toString
+
   "One-node mode (local mode or cluster with only one node)" should {
     "Register result Created" in {
+      val name   = randomName()
       val props  = Props[DummyActor]
-      val name   = System.nanoTime().toString
       val future = registry ? Register(name, props)
       val result = Await.result(future, timeout.duration)
 
@@ -39,8 +44,8 @@ class OneNodeModeSpec extends Specification {
     //--------------------------------------------------------------------------
 
     "Lookup result Found" in {
+      val name  = randomName()
       val props = Props[DummyActor]
-      val name  = System.nanoTime().toString
       registry ! Register(name, props)
 
       val future = registry ? Lookup(name)
@@ -53,13 +58,14 @@ class OneNodeModeSpec extends Specification {
     }
 
     "Lookup result NotFound" in {
-      val future = registry ? Lookup("namexxx")
+      val name   = randomName()
+      val future = registry ? Lookup(name)
       val result = Await.result(future, timeout.duration)
 
       result must haveClass[NotFound]
 
       val ok = result.asInstanceOf[NotFound]
-      ok.name mustEqual "namexxx"
+      ok.name mustEqual name
     }
   }
 }
