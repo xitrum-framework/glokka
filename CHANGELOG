@@ -1,5 +1,5 @@
 1.7:
-* #7 Improve "lookup or create" to be similar to "register"
+* #7 Unify "register" and "lookup or create"
 * #8 Add registry name to log
 
 1.6:

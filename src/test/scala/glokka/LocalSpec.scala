@@ -18,10 +18,10 @@ class LocalSpec extends Specification {
   import Registry._
 
   // Use "implicit" so that we can use actor DSL
-  private implicit val system = ActorSystem("ClusterSystem")
+  private implicit val system = ActorSystem("MyClusterSystem")
 
   // For "ask" timeout
-  private implicit val timeout = Timeout(5000, TimeUnit.SECONDS)
+  private implicit val timeout = Timeout(10, TimeUnit.SECONDS)
 
   private val registry = Registry.start(system, "test")
 

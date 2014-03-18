@@ -24,7 +24,8 @@ In your Scala code:
 
 ::
 
-  import glokka.{Registry, Register, Lookup, Result}
+  import akka.actor.ActorSystem
+  import glokka.Registry
 
   val system    = ActorSystem("MyClusterSystem")
   val proxyName = "my proxy name"
