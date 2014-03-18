@@ -14,21 +14,20 @@ class DummyActor extends Actor {
   def receive = { case _ => }
 }
 
-class LocalSpec extends Specification {
+class OneNodeModeSpec extends Specification {
   import Registry._
 
   // Use "implicit" so that we can use actor DSL
   private implicit val system = ActorSystem("MyClusterSystem")
 
   // For "ask" timeout
-  private implicit val timeout = Timeout(10, TimeUnit.SECONDS)
+  private implicit val timeout = Timeout(5, TimeUnit.SECONDS)
 
   private val registry = Registry.start(system, "test")
 
-  "Local mode" should {
+  "One-node mode (local mode or cluster with only one node)" should {
     "Register result Created" in {
-      val props = Props[DummyActor]
-
+      val props  = Props[DummyActor]
       val name   = System.nanoTime().toString
       val future = registry ? Register(name, props)
       val result = Await.result(future, timeout.duration)
