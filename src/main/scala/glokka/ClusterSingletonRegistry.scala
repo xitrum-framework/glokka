@@ -2,14 +2,9 @@ package glokka
 
 import scala.collection.mutable.{ArrayBuffer, HashMap => MHashMap, MultiMap => MMultiMap, Set => MSet}
 import scala.concurrent.duration.{FiniteDuration, SECONDS}
-
 import akka.actor.{Actor, ActorRef, ActorSystem, Cancellable, PoisonPill, Props, Terminated}
 
-/**
- * Avoid using stash feature in Akka because it requires the user of Glokka to
- * config non-default mailbox. It's a little tedious.
- */
-private case class StashMsg(requester: ActorRef, msg: Any)
+private case class StashMsg(msg: Any, requester: ActorRef)
 
 private object ClusterRegistry {
   case class LookupOrCreate(name: String, timeoutInSeconds: Int = 60)
@@ -91,7 +86,7 @@ private class ClusterSingletonRegistry extends Actor {
           doLookupOrCreate(name, timeout)
 
         case Some(PendingCreateValue(_, msgs)) =>
-          msgs.append(StashMsg(sender(), msg))
+          msgs.append(StashMsg(msg, sender()))
       }
 
     case TimeoutCreate(name, maybeTheCreator) =>
@@ -117,7 +112,7 @@ private class ClusterSingletonRegistry extends Actor {
             msgs.foreach { msg => self.tell(msg.msg, msg.requester) }
             msgs.clear()
           } else {
-            msgs.append(StashMsg(s, msg))
+            msgs.append(StashMsg(msg, s))
           }
       }
 
@@ -127,7 +122,7 @@ private class ClusterSingletonRegistry extends Actor {
           doLookup(name)
 
         case Some(PendingCreateValue(_, msgs)) =>
-          msgs.append(StashMsg(sender(), msg))
+          msgs.append(StashMsg(msg, sender()))
       }
 
     case Terminated(ref) =>

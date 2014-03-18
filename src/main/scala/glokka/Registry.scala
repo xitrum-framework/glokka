@@ -38,7 +38,7 @@ object Registry {
     val log = Logging.getLogger(system, this)
     if (clusterMode) {
       log.info(s"""Glokka actor registry "$proxyName" starts in cluster mode""")
-      system.actorOf(Props(classOf[ClusterSingletonProxy], proxyName))
+      system.actorOf(Props(classOf[ClusterSingletonProxy], proxyName).withMailbox("akka.actor.mailbox.unbounded-deque-based"))
     } else {
       log.info(s"""Glokka actor registry "$proxyName" starts in local mode""")
       system.actorOf(Props(classOf[LocalRegistry]))

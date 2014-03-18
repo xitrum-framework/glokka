@@ -2,9 +2,8 @@ package glokka
 
 import java.net.URLEncoder
 import scala.collection.immutable.SortedSet
-import scala.collection.mutable.ArrayBuffer
 
-import akka.actor.{Actor, ActorRef, ActorSelection, Props, RootActorPath}
+import akka.actor.{Actor, ActorRef, ActorSelection, Props, RootActorPath, Stash}
 import akka.cluster.{Cluster, ClusterEvent, Member}
 import akka.contrib.pattern.ClusterSingletonManager
 
@@ -13,7 +12,7 @@ private object ClusterSingletonProxy {
   val SINGLETON_NAME = URLEncoder.encode("GlokkaActorRegistry", "UTF-8")
 }
 
-private class ClusterSingletonProxy(proxyName: String) extends Actor {
+private class ClusterSingletonProxy(proxyName: String) extends Actor with Stash {
   import Registry._
   import ClusterSingletonProxy._
   import ClusterRegistry._
@@ -24,8 +23,6 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor {
   private[this] val ageOrdering = Ordering.fromLessThan[Member] { (a, b) => a.isOlderThan(b) }
 
   private[this] var membersByAge: SortedSet[Member] = SortedSet.empty(ageOrdering)
-
-  private[this] val stashMsgs = ArrayBuffer[StashMsg]()
 
   //----------------------------------------------------------------------------
   // Subscribe to MemberEvent, re-subscribe when restart
@@ -50,7 +47,7 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor {
     Cluster(context.system).unsubscribe(self)
   }
 
-  def receive = receiveClusterEvents orElse receiveRegister
+  def receive = receiveClusterEvents orElse receiveRegisterAndLookup
 
   //----------------------------------------------------------------------------
 
@@ -65,30 +62,22 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor {
       membersByAge -= m
   }
 
-  private def receiveRegister: Actor.Receive = {
+  private def receiveRegisterAndLookup: Actor.Receive = {
     case Register(name, props) =>
       clusterSingletonRegistryOpt.foreach { leader =>
         leader ! LookupOrCreate(name)
-        context.become(
-          receiveClusterEvents                               orElse
-          receiveLookupOrCreateResult(sender(), name, props) orElse
-          stashOther
-        )
+        context.become(receiveClusterEvents orElse receiveLookupOrCreateResult(sender(), name, props))
       }
 
-    case other =>
-      // Forward everything else to the registry
-      clusterSingletonRegistryOpt.foreach { _.tell(other, sender()) }
+    case lookup: Lookup =>
+      clusterSingletonRegistryOpt.foreach { _.tell(lookup, sender()) }
+
+    case _ =>
   }
 
   private def receiveLookupOrCreateResult(requester: ActorRef, name: String, props: Props): Actor.Receive = {
     case msg @ Found(`name`, ref) =>
-      requester ! msg
-      context.become(
-        receiveClusterEvents orElse
-        receiveRegister      orElse
-        stashOther
-      )
+      replyAndDumpStash(requester, msg)
 
     case NotFound(`name`) =>
       // Must use context.system.actorOf instead of context.actorOf, so that
@@ -97,11 +86,10 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor {
       val refCreatedByMe = context.system.actorOf(props)
 
       sender() ! RegisterByRef(name, refCreatedByMe)
-      context.become(
-        receiveClusterEvents                                   orElse
-        receiveRegisterResult(requester, name, refCreatedByMe) orElse
-        stashOther
-      )
+      context.become(receiveClusterEvents orElse receiveRegisterResult(requester, name, refCreatedByMe))
+
+    case _ =>
+      stash()
   }
 
   private def receiveRegisterResult(requester: ActorRef, name: String, refCreatedByMe: ActorRef): Actor.Receive = {
@@ -109,30 +97,19 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor {
       // Must use context.system.stop because context.system.actorOf was used
       // to create the actor
       context.system.stop(refCreatedByMe)
-
-      requester ! msg
-      context.become(
-        receiveClusterEvents orElse
-        receiveRegister      orElse
-        stashOther
-      )
+      replyAndDumpStash(requester, msg)
 
     case msg @ Created(`name`, `refCreatedByMe`) =>
-      requester ! refCreatedByMe
-      context.become(
-        receiveClusterEvents orElse
-        receiveRegister      orElse
-        stashOther
-      )
+      replyAndDumpStash(requester, msg)
+
+    case _ =>
+      stash()
   }
 
-  private def stashOther: Actor.Receive = {
-    case other => stashMsgs.append(StashMsg(sender(), other))
-  }
-
-  private def dumpStash() {
-    stashMsgs.foreach { msg => self.tell(msg.msg, msg.requester) }
-    stashMsgs.clear()
+  private def replyAndDumpStash(requester: ActorRef, msg: Any) {
+    requester ! msg
+    context.become(receiveClusterEvents orElse receiveRegisterAndLookup)
+    unstashAll()
   }
 
   /** @return Leader */
