@@ -2,11 +2,11 @@ organization       := "tv.cntt"
 
 name               := "glokka"
 
-version            := "1.8-SNAPSHOT"
+version            := "1.9-SNAPSHOT"
 
-scalaVersion       := "2.11.0"
+scalaVersion       := "2.11.1"
 
-crossScalaVersions := Seq("2.11.0", "2.10.4")
+crossScalaVersions := Seq("2.11.1", "2.10.4")
 
 scalacOptions ++= Seq("-deprecation", "-feature", "-unchecked")
 
@@ -16,13 +16,13 @@ scalacOptions ++= Seq("-deprecation", "-feature", "-unchecked")
 // java.lang.UnsupportedClassVersionError: Unsupported major.minor version 51.0
 javacOptions ++= Seq("-source", "1.6", "-target", "1.6")
 
-libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.3.2"
+libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.3.3"
 
-libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.3.2"
+libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.3.3"
 
-libraryDependencies += "com.typesafe.akka" %% "akka-contrib" % "2.3.2"
+libraryDependencies += "com.typesafe.akka" %% "akka-contrib" % "2.3.3"
 
-libraryDependencies += "org.specs2" %% "specs2" % "2.3.11" % "test"
+libraryDependencies += "org.specs2" %% "specs2" % "2.3.12" % "test"
 
 // For "sbt console" used while developing for cluster mode
 unmanagedClasspath in Compile <+= (baseDirectory) map { bd => Attributed.blank(bd / "config_example") }
