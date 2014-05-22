@@ -4,7 +4,7 @@ name               := "glokka"
 
 version            := "1.8-SNAPSHOT"
 
-scalaVersion       := "2.11.0"
+scalaVersion       := "2.11.1"
 
 crossScalaVersions := Seq("2.11.0", "2.10.4")
 
