@@ -6,7 +6,7 @@ mapping" for Akka cluster. See:
 * `Erlang's "global" module <http://erlang.org/doc/man/global.html>`_
 * `Akka's cluster feature <http://doc.akka.io/docs/akka/2.3.0/scala/cluster-usage.html>`_
 
-Glokka is used in `Xitrum <http://xitrum-framework.github.io/xitrum/>`_ to implement
+Glokka is used in `Xitrum <http://xitrum-framework.github.io/>`_ to implement
 its distributed `SockJS <https://github.com/sockjs/sockjs-client>`_ feature.
 
 See `Glokka's Scaladoc <http://xitrum-framework.github.io/glokka>`_.
