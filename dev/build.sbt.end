@@ -18,7 +18,7 @@ publishArtifact in Test := false
 pomIncludeRepository := { _ => false }
 
 pomExtra := (
-  <url>http://xitrum-framework.github.com/glokka/</url>
+  <url>https://github.com/xitrum-framework/glokka</url>
   <licenses>
     <license>
       <name>MIT</name>
