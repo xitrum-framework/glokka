@@ -18,7 +18,7 @@ In your SBT project's build.sbt:
 
 ::
 
-  libraryDependencies += "tv.cntt" %% "glokka" % "1.8"
+  libraryDependencies += "tv.cntt" %% "glokka" % "1.9"
 
 In your Scala code:
 
