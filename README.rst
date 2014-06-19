@@ -18,7 +18,13 @@ In your SBT project's build.sbt:
 
 ::
 
-  libraryDependencies += "tv.cntt" %% "glokka" % "1.9"
+  libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.3.3"
+
+  libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.3.3"
+
+  libraryDependencies += "com.typesafe.akka" %% "akka-contrib" % "2.3.3"
+
+  libraryDependencies += "tv.cntt" %% "glokka" % "2.0"
 
 In your Scala code:
 
