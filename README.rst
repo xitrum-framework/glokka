@@ -18,11 +18,11 @@ In your SBT project's build.sbt:
 
 ::
 
-  libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.3.3"
+  libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.3.4"
 
-  libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.3.3"
+  libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.3.4"
 
-  libraryDependencies += "com.typesafe.akka" %% "akka-contrib" % "2.3.3"
+  libraryDependencies += "com.typesafe.akka" %% "akka-contrib" % "2.3.4"
 
   libraryDependencies += "tv.cntt" %% "glokka" % "2.0"
 
@@ -107,7 +107,7 @@ Glokka can run in Akka non-cluster mode (local or remote). While developing, you
 can run Akka in local mode, then later config Akka to run in cluster mode.
 
 In cluster mode, Glokka uses
-`Akka's Cluster Singleton Pattern <http://doc.akka.io/docs/akka/2.3.0/contrib/cluster-singleton.html>`_
+`Akka's Cluster Singleton Pattern <http://doc.akka.io/docs/akka/2.4.0/contrib/cluster-singleton.html>`_
 to maintain an actor that stores the name -> actorRef lookup table.
 
 Akka config file for a node should look like this (note "ClusterSystem" in the
