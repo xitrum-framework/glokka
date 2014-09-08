@@ -22,7 +22,7 @@ libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.3.6" % "provid
 
 libraryDependencies += "com.typesafe.akka" %% "akka-contrib" % "2.3.6" % "provided"
 
-libraryDependencies += "org.specs2" %% "specs2" % "2.4.1" % "test"
+libraryDependencies += "org.specs2" %% "specs2" % "2.4.2" % "test"
 
 // For "sbt console" used while developing for cluster mode
 unmanagedClasspath in Compile <+= (baseDirectory) map { bd => Attributed.blank(bd / "config_example") }
