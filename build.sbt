@@ -16,11 +16,11 @@ scalacOptions ++= Seq("-deprecation", "-feature", "-unchecked")
 // java.lang.UnsupportedClassVersionError: Unsupported major.minor version 51.0
 javacOptions ++= Seq("-source", "1.6", "-target", "1.6")
 
-libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.3.5" % "provided"
+libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.3.6" % "provided"
 
-libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.3.5" % "provided"
+libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.3.6" % "provided"
 
-libraryDependencies += "com.typesafe.akka" %% "akka-contrib" % "2.3.5" % "provided"
+libraryDependencies += "com.typesafe.akka" %% "akka-contrib" % "2.3.6" % "provided"
 
 libraryDependencies += "org.specs2" %% "specs2" % "2.4.1" % "test"
 
