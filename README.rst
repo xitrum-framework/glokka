@@ -86,19 +86,19 @@ Send:
 
 ::
 
-  registry ! Lookup(actorName)
+  registry ! Registry.Lookup(actorName)
 
 You will receive:
 
 ::
 
-  Found(actorName, actorRef)
+  Registry.Found(actorName, actorRef)
 
 Or:
 
 ::
 
-  NotFound(actorName)
+  Registry.NotFound(actorName)
 
 Cluster
 -------
