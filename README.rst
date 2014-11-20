@@ -22,7 +22,7 @@ SBT
 
   libraryDependencies += "com.typesafe.akka" %% "akka-contrib" % "2.3.7"
 
-  libraryDependencies += "tv.cntt" %% "glokka" % "2.1"
+  libraryDependencies += "tv.cntt" %% "glokka" % "2.2"
 
 Create registry
 ---------------
