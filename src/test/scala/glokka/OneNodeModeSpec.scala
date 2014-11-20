@@ -29,10 +29,10 @@ class OneNodeModeSpec extends Specification {
   private def randomName() = rand.nextInt.toString
 
   "One-node mode (local mode or cluster with only one node)" should {
-    "Register result Created" in {
+    "RegisterByProps result Created" in {
       val name   = randomName()
       val props  = Props[DummyActor]
-      val future = registry ? Register(name, props)
+      val future = registry ? RegisterByProps(name, props)
       val result = Await.result(future, timeout.duration)
 
       result must haveClass[Created]
@@ -41,12 +41,73 @@ class OneNodeModeSpec extends Specification {
       ok.name mustEqual name
     }
 
-    //--------------------------------------------------------------------------
-
-    "Lookup result Found" in {
+    "RegisterByProps result Found" in {
       val name  = randomName()
       val props = Props[DummyActor]
-      registry ! Register(name, props)
+      registry ! RegisterByProps(name, props)
+
+      val future = registry ? RegisterByProps(name, props)
+      val result = Await.result(future, timeout.duration)
+
+      result must haveClass[Found]
+
+      val ok = result.asInstanceOf[Found]
+      ok.name mustEqual name
+    }
+
+    //--------------------------------------------------------------------------
+
+    "RegisterByRef result Registered" in {
+      val name   = randomName()
+      val ref    = system.actorOf(Props[DummyActor])
+      val future = registry ? RegisterByRef(name, ref)
+      val result = Await.result(future, timeout.duration)
+
+      result must haveClass[Registered]
+
+      val ok = result.asInstanceOf[Registered]
+      ok.name mustEqual name
+      ok.ref  mustEqual ref
+    }
+
+    "RegisterByRef result Registered (same ref)" in {
+      val name = randomName()
+      val ref  = system.actorOf(Props[DummyActor])
+      registry ! RegisterByRef(name, ref)
+
+      val future = registry ? RegisterByRef(name, ref)
+      val result = Await.result(future, timeout.duration)
+
+      result must haveClass[Registered]
+
+      val ok = result.asInstanceOf[Registered]
+      ok.name mustEqual name
+      ok.ref  mustEqual ref
+    }
+
+    "RegisterByRef result Conflict (different ref)" in {
+      val name = randomName()
+      val ref1 = system.actorOf(Props[DummyActor])
+      registry ! RegisterByRef(name, ref1)
+
+      val ref2   = system.actorOf(Props[DummyActor])
+      val future = registry ? RegisterByRef(name, ref2)
+      val result = Await.result(future, timeout.duration)
+
+      result must haveClass[Conflict]
+
+      val ok = result.asInstanceOf[Conflict]
+      ok.name      mustEqual name
+      ok.ref       mustEqual ref1
+      ok.failedRef mustEqual ref2
+    }
+
+    //--------------------------------------------------------------------------
+
+    "Lookup result Found (RegisterByProps)" in {
+      val name  = randomName()
+      val props = Props[DummyActor]
+      registry ! RegisterByProps(name, props)
 
       val future = registry ? Lookup(name)
       val result = Await.result(future, timeout.duration)
@@ -55,6 +116,21 @@ class OneNodeModeSpec extends Specification {
 
       val ok = result.asInstanceOf[Found]
       ok.name mustEqual name
+    }
+
+    "Lookup result Found (RegisterByRef)" in {
+      val name = randomName()
+      val ref  = system.actorOf(Props[DummyActor])
+      registry ! RegisterByRef(name, ref)
+
+      val future = registry ? Lookup(name)
+      val result = Await.result(future, timeout.duration)
+
+      result must haveClass[Found]
+
+      val ok = result.asInstanceOf[Found]
+      ok.name mustEqual name
+      ok.ref  mustEqual ref
     }
 
     "Lookup result NotFound" in {

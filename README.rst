@@ -4,29 +4,28 @@ Glokka is a Scala library that allows you to register and lookup actors by names
 in an Akka cluster. See:
 
 * `Erlang's "global" module <http://erlang.org/doc/man/global.html>`_
-* `Akka's cluster feature <http://doc.akka.io/docs/akka/2.3.6/scala/cluster-usage.html>`_
+* `Akka's cluster feature <http://doc.akka.io/docs/akka/2.3.7/scala/cluster-usage.html>`_
 
 Glokka is used in `Xitrum <http://xitrum-framework.github.io/>`_ to implement
 its distributed `SockJS <https://github.com/sockjs/sockjs-client>`_ feature.
 
 See `Glokka's Scaladoc <http://xitrum-framework.github.io/glokka>`_.
 
-Start registry
---------------
-
-In your SBT project's build.sbt:
+SBT
+---
 
 ::
 
-  libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.3.6"
+  libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.3.7"
 
-  libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.3.6"
+  libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.3.7"
 
-  libraryDependencies += "com.typesafe.akka" %% "akka-contrib" % "2.3.6"
+  libraryDependencies += "com.typesafe.akka" %% "akka-contrib" % "2.3.7"
 
-  libraryDependencies += "tv.cntt" %% "glokka" % "2.0"
+  libraryDependencies += "tv.cntt" %% "glokka" % "2.1"
 
-In your Scala code:
+Create registry
+---------------
 
 ::
 
@@ -40,10 +39,8 @@ In your Scala code:
 * You can start multiple registry actors. They must have different ``proxyName``.
 * For convenience, ``proxyName`` can be any String, you don't have to URI-escape it.
 
-Register actor to the registry under a name
--------------------------------------------
-
-Send:
+Register actor by props
+-----------------------
 
 ::
 
@@ -53,7 +50,7 @@ Send:
   // Props to create the actor you want to register.
   val props = ...
 
-  registry ! Registry.Register(actorName, props)
+  registry ! Registry.RegisterByProps(actorName, props)
 
 If the named actor exists, the registry will just return it. You will receive:
 
@@ -72,15 +69,39 @@ If you don't need to differentiate ``Found`` and ``Created``:
 
 ::
 
-  registry ! Registry.Register(actorName, props)
+  registry ! Registry.RegisterByProps(actorName, props)
   context.become {
     case msg: Registry.FoundOrCreated =>
       val actorName = msg.name
       val actorRef  = msg.ref
   }
 
-Lookup named actor in the registry
-----------------------------------
+Regisger actor by ref
+---------------------
+
+::
+
+  registry ! Registry.RegisterByRef(actorName, actorRefToRegister)
+
+If the actor has not been registered, or has already been registered with the
+same name, you will receive:
+
+::
+
+  Registry.Registered(actorName, actorRef)
+
+Otherwise if there's another actor that has been registered with the name, you
+will receive:
+
+::
+
+  Registry.Conflict(actorName, otherActorRef, actorRefToRegister)
+
+In this case, you may need to stop ``actorRefToRegister``, depending on your
+application logic.
+
+Lookup actor by name
+--------------------
 
 Send:
 

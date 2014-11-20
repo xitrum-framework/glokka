@@ -27,7 +27,7 @@ libraryDependencies += "org.specs2" %% "specs2-core" % "2.4.11" % "test"
 // For "sbt console", used while developing for cluster mode
 unmanagedClasspath in Compile <+= (baseDirectory) map { bd => Attributed.blank(bd / "config_example") }
 
-// Enable the following line to test in cluster mode with only one node
+// Enable the following line to test in cluster mode (with only one node)
 //unmanagedClasspath in Test <+= (baseDirectory) map { bd => Attributed.blank(bd / "config_example") }
 
 //------------------------------------------------------------------------------

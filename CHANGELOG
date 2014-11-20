@@ -1,3 +1,7 @@
+2.1:
+
+* #19 Add RegisterByRef
+
 2.0:
 
 * #17 Use "provided" for Akka dependencies

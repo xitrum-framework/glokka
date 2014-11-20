@@ -8,7 +8,8 @@ import com.typesafe.config.ConfigFactory
 // Other things are private.
 
 object Registry {
-  case class Register(name: String, props: Props)
+  case class RegisterByProps(name: String, props: Props)
+  case class RegisterByRef(name: String, ref: ActorRef)
   case class Lookup(name: String)
 
   abstract class FoundOrCreated { def name: String; def ref: ActorRef }
@@ -16,9 +17,13 @@ object Registry {
   case class Found(name: String, ref: ActorRef) extends FoundOrCreated
   case class Created(name: String, ref: ActorRef) extends FoundOrCreated
 
+  case class Registered(name: String, ref: ActorRef)
+
+  case class Conflict(name: String, ref: ActorRef, failedRef: ActorRef)
+
   case class NotFound(name: String)
 
-  private val clusterMode: Boolean = {
+  val clusterMode: Boolean = {
     val config   = ConfigFactory.load()
     val provider = config.getString("akka.actor.provider")
     provider == "akka.cluster.ClusterActorRefProvider"

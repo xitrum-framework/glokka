@@ -94,8 +94,9 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor with Stash 
       // Try again
       clusterSingletonRegistryOpt.foreach(_ ! Identify(None))
 
-    case msg: Register => stash()
-    case msg: Lookup   => stash()
+    case msg: RegisterByProps => stash()
+    case msg: RegisterByRef   => stash()
+    case msg: Lookup          => stash()
 
     case _ =>
       // Ignore all other messages, like cluster events not handled by
@@ -103,9 +104,13 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor with Stash 
   }
 
   private def receiveRegisterAndLookup: Actor.Receive = {
-    case Register(name, props) =>
+    case RegisterByProps(name, props) =>
       clusterSingletonRegistryRef ! LookupOrCreate(name)
-      context.become(receiveClusterEvents orElse receiveLookupOrCreateResult(sender(), name, props))
+      context.become(receiveClusterEvents orElse receiveLookupOrCreateResultByProps(sender(), name, props))
+
+    case RegisterByRef(name, ref) =>
+      clusterSingletonRegistryRef ! LookupOrCreate(name)
+      context.become(receiveClusterEvents orElse receiveLookupOrCreateResultByRef(sender(), name, ref))
 
     case lookup: Lookup =>
       clusterSingletonRegistryRef.tell(lookup, sender())
@@ -115,7 +120,7 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor with Stash 
       // receiveClusterEvents
   }
 
-  private def receiveLookupOrCreateResult(requester: ActorRef, name: String, props: Props): Actor.Receive = {
+  private def receiveLookupOrCreateResultByProps(requester: ActorRef, name: String, props: Props): Actor.Receive = {
     case msg @ Found(`name`, ref) =>
       replyAndDumpStash(requester, msg)
 
@@ -126,20 +131,47 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor with Stash 
       val refCreatedByMe = context.system.actorOf(props)
 
       sender() ! RegisterByRef(name, refCreatedByMe)
-      context.become(receiveClusterEvents orElse receiveRegisterResult(requester, name, refCreatedByMe))
+      context.become(receiveClusterEvents orElse receiveRegisterResultByProps(requester, name, refCreatedByMe))
 
     case _ =>
       stash()
   }
 
-  private def receiveRegisterResult(requester: ActorRef, name: String, refCreatedByMe: ActorRef): Actor.Receive = {
-    case msg @ Found(`name`, otherRef) =>
+  private def receiveRegisterResultByProps(requester: ActorRef, name: String, refCreatedByMe: ActorRef): Actor.Receive = {
+    case Conflict(`name`, otherRef, `refCreatedByMe`) =>
       // Must use context.system.stop because context.system.actorOf was used
       // to create the actor
       context.system.stop(refCreatedByMe)
+
+      val msg = Found(name, otherRef)
       replyAndDumpStash(requester, msg)
 
-    case msg @ Created(`name`, `refCreatedByMe`) =>
+    case Registered(`name`, `refCreatedByMe`) =>
+      val msg = Created(name, refCreatedByMe)
+      replyAndDumpStash(requester, msg)
+
+    case _ =>
+      stash()
+  }
+
+  private def receiveLookupOrCreateResultByRef(requester: ActorRef, name: String, refToRegister: ActorRef): Actor.Receive = {
+    case Found(`name`, ref) =>
+      val msg = if (ref == refToRegister) Registered(name, ref) else Conflict(name, ref, refToRegister)
+      replyAndDumpStash(requester, msg)
+
+    case NotFound(`name`) =>
+      sender() ! RegisterByRef(name, refToRegister)
+      context.become(receiveClusterEvents orElse receiveRegisterResultByRef(requester, name, refToRegister))
+
+    case _ =>
+      stash()
+  }
+
+  private def receiveRegisterResultByRef(requester: ActorRef, name: String, refToRegister: ActorRef): Actor.Receive = {
+    case msg @ Registered(`name`, `refToRegister`) =>
+      replyAndDumpStash(requester, msg)
+
+    case msg @ Conflict(`name`, otherRef, `refToRegister`) =>
       replyAndDumpStash(requester, msg)
 
     case _ =>
