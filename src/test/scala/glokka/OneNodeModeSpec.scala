@@ -29,10 +29,10 @@ class OneNodeModeSpec extends Specification {
   private def randomName() = rand.nextInt.toString
 
   "One-node mode (local mode or cluster with only one node)" should {
-    "RegisterByProps result Created" in {
+    "Register (by props) result Created" in {
       val name   = randomName()
       val props  = Props[DummyActor]
-      val future = registry ? RegisterByProps(name, props)
+      val future = registry ? Register(name, props)
       val result = Await.result(future, timeout.duration)
 
       result must haveClass[Created]
@@ -41,12 +41,12 @@ class OneNodeModeSpec extends Specification {
       ok.name mustEqual name
     }
 
-    "RegisterByProps result Found" in {
+    "Register (by props) result Found" in {
       val name  = randomName()
       val props = Props[DummyActor]
-      registry ! RegisterByProps(name, props)
+      registry ! Register(name, props)
 
-      val future = registry ? RegisterByProps(name, props)
+      val future = registry ? Register(name, props)
       val result = Await.result(future, timeout.duration)
 
       result must haveClass[Found]
@@ -57,10 +57,10 @@ class OneNodeModeSpec extends Specification {
 
     //--------------------------------------------------------------------------
 
-    "RegisterByRef result Registered" in {
+    "Register (by ref) result Registered" in {
       val name   = randomName()
       val ref    = system.actorOf(Props[DummyActor])
-      val future = registry ? RegisterByRef(name, ref)
+      val future = registry ? Register(name, ref)
       val result = Await.result(future, timeout.duration)
 
       result must haveClass[Registered]
@@ -70,12 +70,12 @@ class OneNodeModeSpec extends Specification {
       ok.ref  mustEqual ref
     }
 
-    "RegisterByRef result Registered (same ref)" in {
+    "Register (by ref) result Registered (same ref)" in {
       val name = randomName()
       val ref  = system.actorOf(Props[DummyActor])
-      registry ! RegisterByRef(name, ref)
+      registry ! Register(name, ref)
 
-      val future = registry ? RegisterByRef(name, ref)
+      val future = registry ? Register(name, ref)
       val result = Await.result(future, timeout.duration)
 
       result must haveClass[Registered]
@@ -85,13 +85,13 @@ class OneNodeModeSpec extends Specification {
       ok.ref  mustEqual ref
     }
 
-    "RegisterByRef result Conflict (different ref)" in {
+    "Register (by ref) result Conflict (different ref)" in {
       val name = randomName()
       val ref1 = system.actorOf(Props[DummyActor])
-      registry ! RegisterByRef(name, ref1)
+      registry ! Register(name, ref1)
 
       val ref2   = system.actorOf(Props[DummyActor])
-      val future = registry ? RegisterByRef(name, ref2)
+      val future = registry ? Register(name, ref2)
       val result = Await.result(future, timeout.duration)
 
       result must haveClass[Conflict]
@@ -104,10 +104,10 @@ class OneNodeModeSpec extends Specification {
 
     //--------------------------------------------------------------------------
 
-    "Lookup result Found (RegisterByProps)" in {
+    "Lookup result Found (Register by props)" in {
       val name  = randomName()
       val props = Props[DummyActor]
-      registry ! RegisterByProps(name, props)
+      registry ! Register(name, props)
 
       val future = registry ? Lookup(name)
       val result = Await.result(future, timeout.duration)
@@ -118,10 +118,10 @@ class OneNodeModeSpec extends Specification {
       ok.name mustEqual name
     }
 
-    "Lookup result Found (RegisterByRef)" in {
+    "Lookup result Found (Register by ref)" in {
       val name = randomName()
       val ref  = system.actorOf(Props[DummyActor])
-      registry ! RegisterByRef(name, ref)
+      registry ! Register(name, ref)
 
       val future = registry ? Lookup(name)
       val result = Await.result(future, timeout.duration)

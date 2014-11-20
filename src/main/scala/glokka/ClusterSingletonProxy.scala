@@ -94,9 +94,8 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor with Stash 
       // Try again
       clusterSingletonRegistryOpt.foreach(_ ! Identify(None))
 
-    case msg: RegisterByProps => stash()
-    case msg: RegisterByRef   => stash()
-    case msg: Lookup          => stash()
+    case msg: Register => stash()
+    case msg: Lookup   => stash()
 
     case _ =>
       // Ignore all other messages, like cluster events not handled by
@@ -104,11 +103,11 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor with Stash 
   }
 
   private def receiveRegisterAndLookup: Actor.Receive = {
-    case RegisterByProps(name, props) =>
+    case Register(name, Left(props)) =>
       clusterSingletonRegistryRef ! LookupOrCreate(name)
       context.become(receiveClusterEvents orElse receiveLookupOrCreateResultByProps(sender(), name, props))
 
-    case RegisterByRef(name, ref) =>
+    case Register(name, Right(ref)) =>
       clusterSingletonRegistryRef ! LookupOrCreate(name)
       context.become(receiveClusterEvents orElse receiveLookupOrCreateResultByRef(sender(), name, ref))
 
@@ -130,7 +129,7 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor with Stash 
       // when the current actor dies, refCreatedByMe will be forcefully killed
       val refCreatedByMe = context.system.actorOf(props)
 
-      sender() ! RegisterByRef(name, refCreatedByMe)
+      sender() ! Register(name, refCreatedByMe)
       context.become(receiveClusterEvents orElse receiveRegisterResultByProps(requester, name, refCreatedByMe))
 
     case _ =>
@@ -160,7 +159,7 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor with Stash 
       replyAndDumpStash(requester, msg)
 
     case NotFound(`name`) =>
-      sender() ! RegisterByRef(name, refToRegister)
+      sender() ! Register(name, refToRegister)
       context.become(receiveClusterEvents orElse receiveRegisterResultByRef(requester, name, refToRegister))
 
     case _ =>

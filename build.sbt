@@ -2,7 +2,7 @@ organization       := "tv.cntt"
 
 name               := "glokka"
 
-version            := "2.1-SNAPSHOT"
+version            := "2.2-SNAPSHOT"
 
 scalaVersion       := "2.11.4"
 

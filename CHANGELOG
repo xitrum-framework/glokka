@@ -1,3 +1,7 @@
+2.2:
+
+* #20 Combine RegisterByProps and RegisterByRef to make Register
+
 2.1:
 
 * #19 Add RegisterByRef

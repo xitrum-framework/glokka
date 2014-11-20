@@ -15,7 +15,7 @@ private class LocalRegistry extends Actor {
   //----------------------------------------------------------------------------
 
   def receive = {
-    case RegisterByProps(name, props) =>
+    case Register(name, Left(props)) =>
       name2Ref.get(name) match {
         case Some(ref) =>
           sender() ! Found(name, ref)
@@ -32,7 +32,7 @@ private class LocalRegistry extends Actor {
           context.watch(ref)
       }
 
-    case RegisterByRef(name, refToRegister) =>
+    case Register(name, Right(refToRegister)) =>
       name2Ref.get(name) match {
         case Some(ref) =>
           if (ref == refToRegister)

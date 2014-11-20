@@ -50,7 +50,7 @@ Register actor by props
   // Props to create the actor you want to register.
   val props = ...
 
-  registry ! Registry.RegisterByProps(actorName, props)
+  registry ! Registry.Register(actorName, props)
 
 If the named actor exists, the registry will just return it. You will receive:
 
@@ -69,7 +69,7 @@ If you don't need to differentiate ``Found`` and ``Created``:
 
 ::
 
-  registry ! Registry.RegisterByProps(actorName, props)
+  registry ! Registry.Register(actorName, props)
   context.become {
     case msg: Registry.FoundOrCreated =>
       val actorName = msg.name
@@ -81,7 +81,7 @@ Regisger actor by ref
 
 ::
 
-  registry ! Registry.RegisterByRef(actorName, actorRefToRegister)
+  registry ! Registry.Register(actorName, actorRefToRegister)
 
 If the actor has not been registered, or has already been registered with the
 same name, you will receive:

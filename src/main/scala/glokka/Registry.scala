@@ -8,8 +8,15 @@ import com.typesafe.config.ConfigFactory
 // Other things are private.
 
 object Registry {
-  case class RegisterByProps(name: String, props: Props)
-  case class RegisterByRef(name: String, ref: ActorRef)
+  case class Register(name: String, props_ref: Either[Props, ActorRef]) {
+    def this(name: String, props: Props)  = this(name, Left(props))
+    def this(name: String, ref:   ActorRef) = this(name, Right(ref))
+  }
+  object Register {
+    def apply(name: String, props: Props)    = new Register(name, props)
+    def apply(name: String, ref:   ActorRef) = new Register(name, ref)
+  }
+
   case class Lookup(name: String)
 
   abstract class FoundOrCreated { def name: String; def ref: ActorRef }

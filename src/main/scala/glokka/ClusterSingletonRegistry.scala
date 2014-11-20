@@ -49,9 +49,10 @@ Or:
 
   NotFound("name")
 
-In case of ``NotFound``, you have 60s (see above) to register using ``RegisterByRef``.
+In case of ``NotFound``, you have 60s (see above) to register using ``Register``
+by ref.
 
-After sending ``RegisterByRef``, you will receive ``Conflict`` or ``Registered``.
+After sending ``Register`` by ref, you will receive ``Conflict`` or ``Registered``.
 
 During the wait time, if there are lookup or register messages sent to the registry
 (e.g. from other places), they will be stashed. They will be processed
@@ -108,7 +109,7 @@ private class ClusterSingletonRegistry(clusterSingletonProxyRef: ActorRef) exten
         }
       }
 
-    case msg @ RegisterByRef(name, ref) =>
+    case msg @ Register(name, Right(ref)) =>
       pendingCreateReqs.get(name) match {
         case None =>
           doRegister(name, ref)
