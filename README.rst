@@ -4,7 +4,7 @@ Glokka is a Scala library that allows you to register and lookup actors by names
 in an Akka cluster. See:
 
 * `Erlang's "global" module <http://erlang.org/doc/man/global.html>`_
-* `Akka's cluster feature <http://doc.akka.io/docs/akka/2.3.7/scala/cluster-usage.html>`_
+* `Akka's cluster feature <http://doc.akka.io/docs/akka/2.3.8/scala/cluster-usage.html>`_
 
 Glokka is used in `Xitrum <http://xitrum-framework.github.io/>`_ to implement
 its distributed `SockJS <https://github.com/sockjs/sockjs-client>`_ feature.
@@ -16,11 +16,11 @@ SBT
 
 ::
 
-  libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.3.7"
+  libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.3.8"
 
-  libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.3.7"
+  libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.3.8"
 
-  libraryDependencies += "com.typesafe.akka" %% "akka-contrib" % "2.3.7"
+  libraryDependencies += "com.typesafe.akka" %% "akka-contrib" % "2.3.8"
 
   libraryDependencies += "tv.cntt" %% "glokka" % "2.2"
 
