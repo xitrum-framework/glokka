@@ -76,7 +76,7 @@ If you don't need to differentiate ``Found`` and ``Created``:
       val actorRef  = msg.ref
   }
 
-Regisger actor by ref
+Register actor by ref
 ---------------------
 
 ::
