@@ -16,11 +16,11 @@ SBT
 
 ::
 
-  libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.3.9"
+  libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.3.10"
 
-  libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.3.9"
+  libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.3.10"
 
-  libraryDependencies += "com.typesafe.akka" %% "akka-contrib" % "2.3.9"
+  libraryDependencies += "com.typesafe.akka" %% "akka-contrib" % "2.3.10"
 
   libraryDependencies += "tv.cntt" %% "glokka" % "2.2"
 
