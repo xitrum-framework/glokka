@@ -1,3 +1,7 @@
+2.3:
+
+* #22 Add Tell(name, msg) and Tell(name, props, msg)
+
 2.2:
 
 * #20 Combine RegisterByProps and RegisterByRef to make Register

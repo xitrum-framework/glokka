@@ -16,13 +16,11 @@ SBT
 
 ::
 
-  libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.3.10"
-
+  libraryDependencies += "com.typesafe.akka" %% "akka-actor"   % "2.3.10"
   libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.3.10"
-
   libraryDependencies += "com.typesafe.akka" %% "akka-contrib" % "2.3.10"
 
-  libraryDependencies += "tv.cntt" %% "glokka" % "2.2"
+  libraryDependencies += "tv.cntt" %% "glokka" % "2.3"
 
 Create registry
 ---------------
@@ -58,8 +56,8 @@ If the named actor exists, the registry will just return it. You will receive:
 
   Registry.Found(actorName, actorRef)
 
-Otherwise ``props`` will be used to create the actor locally (when the actor dies,
-it will be unregistered automatically). You will receive:
+Otherwise ``props`` will be used to create the actor locally (when the actor
+dies, it will be unregistered automatically). You will receive:
 
 ::
 
@@ -120,6 +118,22 @@ Or:
 ::
 
   Registry.NotFound(actorName)
+
+Tell
+----
+
+If you don't want to lookup and keep the actor reference:
+
+::
+
+  registry ! Registry.Tell(actorName, msg)
+
+::
+
+  registry ! Registry.Tell(actorName, props, msg)
+
+* If the named actor exists, msg will be sent to it.
+* Otherwise, `props` will be used to create the named actor, and msg will be sent to it.
 
 Cluster
 -------

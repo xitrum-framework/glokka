@@ -71,7 +71,7 @@ private class ClusterSingletonRegistry(clusterSingletonProxyRef: ActorRef) exten
   // The reverse lookup table to quickly unregister dead actors
   private val ref2Names = new MHashMap[ActorRef, MSet[String]] with MMultiMap[ActorRef, String]
 
-  // Key is actor name
+  // Keys are actor names
   private val pendingCreateReqs = new MHashMap[String, PendingCreateValue]
 
   //----------------------------------------------------------------------------
@@ -91,13 +91,13 @@ private class ClusterSingletonRegistry(clusterSingletonProxyRef: ActorRef) exten
   }
 
   def receive = {
-    case msg @ LookupOrCreate(name, timeout) =>
+    case lookupOrCreate @ LookupOrCreate(name, timeoutInSeconds) =>
       pendingCreateReqs.get(name) match {
         case None =>
-          doLookupOrCreate(name, timeout)
+          doLookupOrCreate(sender(), name, timeoutInSeconds)
 
         case Some(PendingCreateValue(_, msgs)) =>
-          msgs.append(StashMsg(msg, sender()))
+          msgs.append(StashMsg(lookupOrCreate, sender()))
       }
 
     case TimeoutCreate(name, maybeTheCreator) =>
@@ -109,31 +109,43 @@ private class ClusterSingletonRegistry(clusterSingletonProxyRef: ActorRef) exten
         }
       }
 
-    case msg @ Register(name, Right(ref)) =>
+    case register @ Register(name, Right(ref)) =>
       pendingCreateReqs.get(name) match {
         case None =>
-          doRegister(name, ref)
+          doRegister(sender(), name, ref)
 
         case Some(PendingCreateValue(creator, msgs)) =>
           val s = sender()
           if (s == creator) {
-            doRegister(name, ref)
+            doRegister(s, name, ref)
 
             pendingCreateReqs.remove(name)
             msgs.foreach { msg => self.tell(msg.msg, msg.requester) }
             msgs.clear()
           } else {
-            msgs.append(StashMsg(msg, s))
+            msgs.append(StashMsg(register, s))
           }
       }
 
-    case msg @ Lookup(name) =>
+    case lookup @ Lookup(name) =>
       pendingCreateReqs.get(name) match {
         case None =>
-          doLookup(name)
+          name2Ref.get(name) match {
+            case None      => sender() ! NotFound(name)
+            case Some(ref) => sender() ! Found(name, ref)
+          }
 
         case Some(PendingCreateValue(_, msgs)) =>
-          msgs.append(StashMsg(msg, sender()))
+          msgs.append(StashMsg(lookup, sender()))
+      }
+
+    case tell @ Tell(name, None, msg) =>
+      pendingCreateReqs.get(name) match {
+        case None =>
+          name2Ref.get(name).foreach { ref => ref.tell(msg, sender()) }
+
+        case Some(PendingCreateValue(_, msgs)) =>
+          msgs.append(StashMsg(tell, sender()))
       }
 
     case Terminated(ref) =>
@@ -142,46 +154,37 @@ private class ClusterSingletonRegistry(clusterSingletonProxyRef: ActorRef) exten
       }
   }
 
-
-
   //----------------------------------------------------------------------------
 
-  private def doLookupOrCreate(name: String, timeoutInSeconds: Int) {
-    val s = sender()
+  private def doLookupOrCreate(requester: ActorRef, name: String, timeoutInSeconds: Int) {
     name2Ref.get(name) match {
       case Some(ref) =>
-        s ! Found(name, ref)
+        requester ! Found(name, ref)
 
       case None =>
+        // Wait for named actor to be created
         val delay = FiniteDuration(timeoutInSeconds, SECONDS)
-        val msg   = TimeoutCreate(name, s)
+        val msg   = TimeoutCreate(name, requester)
         context.system.scheduler.scheduleOnce(delay, self, msg)(context.dispatcher)
 
-        s ! NotFound(name)
-        pendingCreateReqs(name) = PendingCreateValue(s, ArrayBuffer())
+        requester ! NotFound(name)
+        pendingCreateReqs(name) = PendingCreateValue(requester, ArrayBuffer())
     }
   }
 
-  private def doRegister(name: String, refToRegister: ActorRef) {
+  private def doRegister(requester: ActorRef, name: String, refToRegister: ActorRef) {
     name2Ref.get(name) match {
       case Some(ref) =>
         if (ref == refToRegister)
-          sender() ! Registered(name, ref)
+          requester ! Registered(name, ref)
         else
-          sender() ! Conflict(name, ref, refToRegister)
+          requester ! Conflict(name, ref, refToRegister)
 
       case None =>
-        sender() ! Registered(name, refToRegister)
+        requester ! Registered(name, refToRegister)
         context.watch(refToRegister)
         name2Ref(name) = refToRegister
         ref2Names.addBinding(refToRegister, name)
-    }
-  }
-
-  private def doLookup(name: String) {
-    name2Ref.get(name) match {
-      case None      => sender() ! NotFound(name)
-      case Some(ref) => sender() ! Found(name, ref)
     }
   }
 }
