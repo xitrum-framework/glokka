@@ -1,6 +1,7 @@
 package glokka
 
 import java.net.URLEncoder
+
 import scala.collection.immutable.SortedSet
 
 import akka.actor.{
@@ -8,7 +9,7 @@ import akka.actor.{
   ActorSelection, RootActorPath, Identify, ActorIdentity
 }
 import akka.cluster.{Cluster, ClusterEvent, Member}
-import akka.contrib.pattern.ClusterSingletonManager
+import akka.cluster.singleton.{ClusterSingletonManager, ClusterSingletonManagerSettings}
 
 private object ClusterSingletonProxy {
   // This must be URL-escaped
@@ -40,9 +41,8 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor with Stash 
 
     val proxyProps = ClusterSingletonManager.props(
       singletonProps     = Props(classOf[ClusterSingletonRegistry], self),
-      singletonName      = SINGLETON_NAME,
       terminationMessage = PoisonPill,
-      role               = None
+      settings           = ClusterSingletonManagerSettings(context.system).withSingletonName(SINGLETON_NAME)
     )
 
     // Must use context.system.actorOf instead of context.actorOf, so that the

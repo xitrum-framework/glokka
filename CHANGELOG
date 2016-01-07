@@ -1,3 +1,7 @@
+2.4:
+
+* #23 Update Akka from 2.3.10 to 2.4.1
+
 2.3:
 
 * #22 Add Tell(name, msg) and Tell(name, props, msg)

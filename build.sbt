@@ -1,25 +1,23 @@
 organization       := "tv.cntt"
 name               := "glokka"
-version            := "2.3-SNAPSHOT"
+version            := "2.4-SNAPSHOT"
 
 //------------------------------------------------------------------------------
 
-scalaVersion       := "2.11.6"
-crossScalaVersions := Seq("2.11.6", "2.10.5")
+// Akka 2.4.0+ dropped Scala 2.10.x support
+scalaVersion       := "2.11.7"
+crossScalaVersions := Seq("2.11.7")
 
 scalacOptions ++= Seq("-deprecation", "-feature", "-unchecked")
 
-// http://www.scala-sbt.org/release/docs/Detailed-Topics/Java-Sources
-// Avoid problem when this lib is built with Java 7 but the projects that use it
-// are run with Java 6
-// java.lang.UnsupportedClassVersionError: Unsupported major.minor version 51.0
-javacOptions ++= Seq("-source", "1.6", "-target", "1.6")
+// Akka 2.4.0+ requires Java 8
+javacOptions ++= Seq("-source", "1.8", "-target", "1.8")
 
 //------------------------------------------------------------------------------
 
-libraryDependencies += "com.typesafe.akka" %% "akka-actor"   % "2.3.10" % "provided"
-libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.3.10" % "provided"
-libraryDependencies += "com.typesafe.akka" %% "akka-contrib" % "2.3.10" % "provided"
+libraryDependencies += "com.typesafe.akka" %% "akka-actor"   % "2.4.1" % "provided"
+libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.4.1" % "provided"
+libraryDependencies += "com.typesafe.akka" %% "akka-contrib" % "2.4.1" % "provided"
 
 libraryDependencies += "org.specs2" %% "specs2-core" % "2.4.11" % "test"
 
