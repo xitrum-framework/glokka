@@ -21,7 +21,7 @@ private class LocalRegistry extends Actor {
           sender() ! Found(name, ref)
 
         case None =>
-          val ref = createActor(props)
+          val ref = createActor(name, props)
           sender() ! Created(name, ref)
           registerActor(ref, name)
       }
@@ -54,7 +54,7 @@ private class LocalRegistry extends Actor {
           ref.tell(msg, sender())
 
         case None =>
-          val ref = createActor(props)
+          val ref = createActor(name, props)
           ref.tell(msg, sender())
           registerActor(ref, name)
       }
@@ -65,11 +65,11 @@ private class LocalRegistry extends Actor {
       }
   }
 
-  private def createActor(props: Props): ActorRef = {
+  private def createActor(name: String, props: Props): ActorRef = {
     // Must use context.system.actorOf instead of context.actorOf, so that
     // refCreatedByMe is not attached as a child to the current actor; otherwise
     // when the current actor dies, refCreatedByMe will be forcefully killed
-    context.system.actorOf(props)
+    context.system.actorOf(props, name)
   }
 
   private def registerActor(ref: ActorRef, name: String) {
