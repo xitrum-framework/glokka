@@ -14,7 +14,7 @@ private class LocalRegistry extends Actor {
 
   //----------------------------------------------------------------------------
 
-  def receive = {
+  override def receive: Receive = {
     case Register(name, Left(props)) =>
       name2Ref.get(name) match {
         case Some(ref) =>

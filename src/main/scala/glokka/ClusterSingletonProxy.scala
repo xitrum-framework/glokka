@@ -13,7 +13,7 @@ import akka.cluster.singleton.{ClusterSingletonManager, ClusterSingletonManagerS
 
 private object ClusterSingletonProxy {
   // This must be URL-escaped
-  val SINGLETON_NAME = URLEncoder.encode("GlokkaActorRegistry", "UTF-8")
+  val SINGLETON_NAME: String = URLEncoder.encode("GlokkaActorRegistry", "UTF-8")
 }
 
 private class ClusterSingletonProxy(proxyName: String) extends Actor with Stash {
@@ -58,7 +58,7 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor with Stash 
 
   // Giving cluster events more priority might make clusterSingletonRegistryOpt
   // more reliable
-  def receive = receiveClusterEvents orElse receiveClusterSingletonRegistryIdentity
+  override def receive: Receive = receiveClusterEvents orElse receiveClusterSingletonRegistryIdentity
 
   //----------------------------------------------------------------------------
 
@@ -96,9 +96,9 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor with Stash 
       // Try again
       clusterSingletonRegistryOpt.foreach(_ ! Identify(None))
 
-    case msg: Register => stash()
-    case msg: Lookup   => stash()
-    case msg: Tell     => stash()
+    case _: Register => stash()
+    case _: Lookup   => stash()
+    case _: Tell     => stash()
 
     case _ =>
       // Ignore all other messages, like cluster events not handled by
@@ -117,10 +117,10 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor with Stash 
     case lookup: Lookup =>
       clusterSingletonRegistryRef.tell(lookup, sender())
 
-    case tell @ Tell(name, None, msg) =>
+    case tell @ Tell(_, None, _) =>
       clusterSingletonRegistryRef.tell(tell, sender())
 
-    case tell @ Tell(name, Some(props), msg) =>
+    case Tell(name, Some(props), msg) =>
       // Some(0) is a marker so that clusterSingletonRegistryRef knows that
       // if the named actor does not exist, it should let the proxy create and
       // register the actor
@@ -191,7 +191,7 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor with Stash 
     case msg @ Registered(`name`, `refToRegister`) =>
       replyAndDumpStash(requester, msg)
 
-    case msg @ Conflict(`name`, otherRef, `refToRegister`) =>
+    case msg @ Conflict(`name`, _, `refToRegister`) =>
       replyAndDumpStash(requester, msg)
 
     case _ =>

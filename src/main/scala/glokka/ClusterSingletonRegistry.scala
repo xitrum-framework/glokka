@@ -2,7 +2,7 @@ package glokka
 
 import scala.collection.mutable.{ArrayBuffer, HashMap => MHashMap, MultiMap => MMultiMap, Set => MSet}
 import scala.concurrent.duration.{FiniteDuration, SECONDS}
-import akka.actor.{Actor, ActorRef, ActorSystem, PoisonPill, Terminated}
+import akka.actor.{Actor, ActorRef, PoisonPill, Terminated}
 
 private object ClusterRegistry {
   case class LookupOrCreate(name: String, timeoutInSeconds: Int = 60)
@@ -90,7 +90,7 @@ private class ClusterSingletonRegistry(clusterSingletonProxyRef: ActorRef) exten
     pendingCreateReqs.clear()
   }
 
-  def receive = {
+  override def receive: Receive = {
     case lookupOrCreate @ LookupOrCreate(name, timeoutInSeconds) =>
       pendingCreateReqs.get(name) match {
         case None =>

@@ -1,18 +1,16 @@
 package glokka
 
 import org.specs2.mutable._
-
 import java.util.concurrent.TimeUnit
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.util.Random
 
+import scala.concurrent.Await
+import scala.util.Random
 import akka.actor.{Actor, ActorSystem, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 
 class EchoActor extends Actor {
-  def receive = { case msg => sender() ! msg }
+  override def receive: Receive = { case msg => sender() ! msg }
 }
 
 class OneNodeModeSpec extends Specification {
@@ -33,7 +31,7 @@ class OneNodeModeSpec extends Specification {
       val name   = randomName()
       val props  = Props[EchoActor]
       val future = registry ? Register(name, props)
-      val result = Await.result(future, timeout.duration)
+      val result = Await.result(future, timeout.duration).asInstanceOf[AnyRef]
 
       result must haveClass[Created]
 
@@ -47,7 +45,7 @@ class OneNodeModeSpec extends Specification {
       registry ! Register(name, props)
 
       val future = registry ? Register(name, props)
-      val result = Await.result(future, timeout.duration)
+      val result = Await.result(future, timeout.duration).asInstanceOf[AnyRef]
 
       result must haveClass[Found]
 
@@ -61,7 +59,7 @@ class OneNodeModeSpec extends Specification {
       val name   = randomName()
       val ref    = system.actorOf(Props[EchoActor])
       val future = registry ? Register(name, ref)
-      val result = Await.result(future, timeout.duration)
+      val result = Await.result(future, timeout.duration).asInstanceOf[AnyRef]
 
       result must haveClass[Registered]
 
@@ -76,7 +74,7 @@ class OneNodeModeSpec extends Specification {
       registry ! Register(name, ref)
 
       val future = registry ? Register(name, ref)
-      val result = Await.result(future, timeout.duration)
+      val result = Await.result(future, timeout.duration).asInstanceOf[AnyRef]
 
       result must haveClass[Registered]
 
@@ -92,7 +90,7 @@ class OneNodeModeSpec extends Specification {
 
       val ref2   = system.actorOf(Props[EchoActor])
       val future = registry ? Register(name, ref2)
-      val result = Await.result(future, timeout.duration)
+      val result = Await.result(future, timeout.duration).asInstanceOf[AnyRef]
 
       result must haveClass[Conflict]
 
@@ -110,7 +108,7 @@ class OneNodeModeSpec extends Specification {
       registry ! Register(name, props)
 
       val future = registry ? Lookup(name)
-      val result = Await.result(future, timeout.duration)
+      val result = Await.result(future, timeout.duration).asInstanceOf[AnyRef]
 
       result must haveClass[Found]
 
@@ -124,7 +122,7 @@ class OneNodeModeSpec extends Specification {
       registry ! Register(name, ref)
 
       val future = registry ? Lookup(name)
-      val result = Await.result(future, timeout.duration)
+      val result = Await.result(future, timeout.duration).asInstanceOf[AnyRef]
 
       result must haveClass[Found]
 
@@ -136,7 +134,7 @@ class OneNodeModeSpec extends Specification {
     "Lookup: result NotFound" in {
       val name   = randomName()
       val future = registry ? Lookup(name)
-      val result = Await.result(future, timeout.duration)
+      val result = Await.result(future, timeout.duration).asInstanceOf[AnyRef]
 
       result must haveClass[NotFound]
 
@@ -152,7 +150,7 @@ class OneNodeModeSpec extends Specification {
       registry ! Register(name, ref)
 
       val future = registry ? Tell(name, "Hello")
-      val result = Await.result(future, timeout.duration)
+      val result = Await.result(future, timeout.duration).asInstanceOf[AnyRef]
 
       result must haveClass[String]
       result mustEqual "Hello"
@@ -162,7 +160,7 @@ class OneNodeModeSpec extends Specification {
       val name = randomName()
 
       val future = registry ? Tell(name, Props[EchoActor], "Hello")
-      val result = Await.result(future, timeout.duration)
+      val result = Await.result(future, timeout.duration).asInstanceOf[AnyRef]
 
       result must haveClass[String]
       result mustEqual "Hello"
