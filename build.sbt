@@ -1,6 +1,6 @@
 organization       := "tv.cntt"
 name               := "glokka"
-version            := "2.5.0-SNAPSHOT"
+version            := "2.5.1-SNAPSHOT"
 
 //------------------------------------------------------------------------------
 
