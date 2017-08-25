@@ -1,12 +1,12 @@
 organization       := "tv.cntt"
 name               := "glokka"
-version            := "2.4.1-SNAPSHOT"
+version            := "2.5.0-SNAPSHOT"
 
 //------------------------------------------------------------------------------
 
 // Akka 2.4.0+ dropped Scala 2.10.x support
-crossScalaVersions := Seq("2.12.1", "2.11.8")
-scalaVersion       := "2.12.1"
+crossScalaVersions := Seq("2.12.3", "2.11.11")
+scalaVersion       := "2.12.3"
 
 // Akka 2.4.0+ requires Java 8
 javacOptions ++= Seq("-source", "1.8", "-target", "1.8")
@@ -14,11 +14,11 @@ scalacOptions ++= Seq("-deprecation", "-feature", "-unchecked")
 
 //------------------------------------------------------------------------------
 
-libraryDependencies += "com.typesafe.akka" %% "akka-actor"   % "2.4.14" % "provided"
-libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.4.14" % "provided"
-libraryDependencies += "com.typesafe.akka" %% "akka-contrib" % "2.4.14" % "provided"
+libraryDependencies += "com.typesafe.akka" %% "akka-actor"   % "2.5.4" % "provided"
+libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.5.4" % "provided"
+libraryDependencies += "com.typesafe.akka" %% "akka-contrib" % "2.5.4" % "provided"
 
-libraryDependencies += "org.specs2" %% "specs2-core" % "3.8.6" % "test"
+libraryDependencies += "org.specs2" %% "specs2-core" % "3.9.4" % "test"
 
 //------------------------------------------------------------------------------
 
