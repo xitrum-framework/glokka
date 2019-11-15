@@ -1,6 +1,6 @@
 organization := "tv.cntt"
 name         := "glokka"
-version      := "2.6.0-SNAPSHOT"
+version      := "2.6.1-SNAPSHOT"
 
 //------------------------------------------------------------------------------
 
@@ -30,4 +30,4 @@ unmanagedClasspath in Compile += { Attributed.blank(baseDirectory.value / "confi
 
 // Skip API doc generation to speedup "publishLocal" while developing.
 // Comment out this line when publishing to Sonatype.
-//publishArtifact in (Compile, packageDoc) := false
+publishArtifact in (Compile, packageDoc) := false

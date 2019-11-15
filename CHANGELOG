@@ -1,3 +1,8 @@
+2.6.0:
+
+* #29 Update Akka from 2.5 to 2.6
+* #30 Support Scala 2.13
+
 2.5.0:
 
 * #27 Update Akka from 2.4.14 to 2.5.4
