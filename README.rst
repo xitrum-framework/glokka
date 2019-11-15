@@ -16,11 +16,7 @@ SBT
 
 ::
 
-  libraryDependencies += "com.typesafe.akka" %% "akka-actor"   % "2.5.4"
-  libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.5.4"
-  libraryDependencies += "com.typesafe.akka" %% "akka-contrib" % "2.5.4"
-
-  libraryDependencies += "tv.cntt" %% "glokka" % "2.5.0"
+  libraryDependencies += "tv.cntt" %% "glokka" % "2.6.0"
 
 Create registry
 ---------------
