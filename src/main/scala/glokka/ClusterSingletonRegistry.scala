@@ -69,6 +69,9 @@ private class ClusterSingletonRegistry(clusterSingletonProxyRef: ActorRef) exten
   private val name2Ref = new MHashMap[String, ActorRef]
 
   // The reverse lookup table to quickly unregister dead actors
+  //
+  // Remove Scala 2.12 support after some time:
+  // https://github.com/scala/scala-collection-contrib/issues/66
   private val ref2Names = new MHashMap[ActorRef, MSet[String]] with MMultiMap[ActorRef, String]
 
   // Keys are actor names
@@ -76,12 +79,12 @@ private class ClusterSingletonRegistry(clusterSingletonProxyRef: ActorRef) exten
 
   //----------------------------------------------------------------------------
 
-  override def postStop() {
+  override def postStop(): Unit = {
     // For consistency, tell all actors in this registry to stop
     ref2Names.keys.foreach(_ ! PoisonPill)
   }
 
-  override def preRestart(reason: Throwable, message: Option[Any]) {
+  override def preRestart(reason: Throwable, message: Option[Any]): Unit = {
     super.preRestart(reason, message)
 
     // Reset state on restart
@@ -156,7 +159,7 @@ private class ClusterSingletonRegistry(clusterSingletonProxyRef: ActorRef) exten
 
   //----------------------------------------------------------------------------
 
-  private def doLookupOrCreate(requester: ActorRef, name: String, timeoutInSeconds: Int) {
+  private def doLookupOrCreate(requester: ActorRef, name: String, timeoutInSeconds: Int): Unit = {
     name2Ref.get(name) match {
       case Some(ref) =>
         requester ! Found(name, ref)
@@ -172,7 +175,7 @@ private class ClusterSingletonRegistry(clusterSingletonProxyRef: ActorRef) exten
     }
   }
 
-  private def doRegister(requester: ActorRef, name: String, refToRegister: ActorRef) {
+  private def doRegister(requester: ActorRef, name: String, refToRegister: ActorRef): Unit = {
     name2Ref.get(name) match {
       case Some(ref) =>
         if (ref == refToRegister)

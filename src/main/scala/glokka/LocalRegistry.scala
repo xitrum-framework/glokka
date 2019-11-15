@@ -72,7 +72,7 @@ private class LocalRegistry extends Actor {
     context.system.actorOf(props)
   }
 
-  private def registerActor(ref: ActorRef, name: String) {
+  private def registerActor(ref: ActorRef, name: String): Unit = {
     name2Ref(name) = ref
     ref2Names.addBinding(ref, name)
     context.watch(ref)

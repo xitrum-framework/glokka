@@ -34,7 +34,7 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor with Stash 
   //----------------------------------------------------------------------------
   // Subscribe to MemberEvent, re-subscribe when restart
 
-  override def preStart() {
+  override def preStart(): Unit = {
     super.preStart()
 
     Cluster(context.system).subscribe(self, classOf[ClusterEvent.ClusterDomainEvent])
@@ -51,7 +51,7 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor with Stash 
     context.system.actorOf(proxyProps, escapedProxyName)
   }
 
-  override def postStop() {
+  override def postStop(): Unit = {
     super.postStop()
     Cluster(context.system).unsubscribe(self)
   }
@@ -198,13 +198,13 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor with Stash 
       stash()
   }
 
-  private def replyAndDumpStash(requester: ActorRef, msg: Any) {
+  private def replyAndDumpStash(requester: ActorRef, msg: Any): Unit = {
     requester ! msg
     context.become(receiveClusterEvents orElse receiveGlokkaEvents)
     unstashAll()
   }
 
-  private def tellAndDumpStash(requester: ActorRef, target: ActorRef) {
+  private def tellAndDumpStash(requester: ActorRef, target: ActorRef): Unit = {
     target.tell(tellMsg.get, requester)
     tellMsg = None
     context.become(receiveClusterEvents orElse receiveGlokkaEvents)
