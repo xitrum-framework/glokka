@@ -4,7 +4,7 @@ Glokka is a Scala library that allows you to register and lookup actors by names
 in an Akka cluster. See:
 
 * `Erlang's "global" module <http://erlang.org/doc/man/global.html>`_
-* `Akka's cluster feature <http://doc.akka.io/docs/akka/2.5.4/scala/cluster-usage.html>`_
+* `Akka's cluster feature <https://doc.akka.io/docs/akka/current/cluster-usage.html>`_
 
 Glokka is used in `Xitrum <http://xitrum-framework.github.io/>`_ to implement
 its distributed `SockJS <https://github.com/sockjs/sockjs-client>`_ feature.
@@ -16,7 +16,7 @@ SBT
 
 ::
 
-  libraryDependencies += "tv.cntt" %% "glokka" % "2.6.0"
+  libraryDependencies += "tv.cntt" %% "glokka" % "2.6.1"
 
 Create registry
 ---------------
@@ -138,33 +138,8 @@ Glokka can run in Akka non-cluster mode (local or remote). While developing, you
 can run Akka in local mode, then later config Akka to run in cluster mode.
 
 In cluster mode, Glokka uses
-`Akka's Cluster Singleton Pattern <http://doc.akka.io/docs/akka/2.4.0/contrib/cluster-singleton.html>`_
+`Akka's Cluster Singleton Pattern <https://doc.akka.io/docs/akka/current/cluster-singleton.html>`_
 to maintain an actor that stores the name -> actorRef lookup table.
 
-Akka config file for a node should look like this (note "ClusterSystem" in the
-source code example above and the config below):
-
-::
-
-  akka {
-    actor {
-      provider = "akka.cluster.ClusterActorRefProvider"
-    }
-
-    # This node
-    remote {
-      log-remote-lifecycle-events = off
-      netty.tcp {
-        hostname = "127.0.0.1"
-        port = 2551  # 0 means random port
-      }
-    }
-
-    cluster {
-      seed-nodes = [
-        "akka.tcp://MyClusterSystem@127.0.0.1:2551",
-        "akka.tcp://MyClusterSystem@127.0.0.1:2552"]
-
-      auto-down-unreachable-after = 10s
-    }
-  }
+Akka config file for a node should look like ``config_example/application.conf``
+(note ``MyClusterSystem`` in the source code example above and in the config file).

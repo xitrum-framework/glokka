@@ -4,26 +4,26 @@ version      := "2.6.1-SNAPSHOT"
 
 //------------------------------------------------------------------------------
 
-crossScalaVersions := Seq("2.13.1", "2.12.10")
-scalaVersion       := "2.13.1"
+crossScalaVersions := Seq("2.13.4", "2.12.13")
+scalaVersion       := "2.13.4"
 
 javacOptions  ++= Seq("-source", "1.8", "-target", "1.8")
 scalacOptions ++= Seq("-deprecation", "-feature", "-unchecked")
 
 //------------------------------------------------------------------------------
 
-libraryDependencies += "com.typesafe.akka" %% "akka-actor"         % "2.6.0"
-libraryDependencies += "com.typesafe.akka" %% "akka-cluster"       % "2.6.0"
-libraryDependencies += "com.typesafe.akka" %% "akka-cluster-tools" % "2.6.0"
+libraryDependencies += "com.typesafe.akka" %% "akka-actor"         % "2.6.11"
+libraryDependencies += "com.typesafe.akka" %% "akka-cluster"       % "2.6.11"
+libraryDependencies += "com.typesafe.akka" %% "akka-cluster-tools" % "2.6.11"
 
-libraryDependencies += "org.specs2" %% "specs2-core" % "4.8.1" % "test"
+libraryDependencies += "org.specs2" %% "specs2-core" % "4.10.5" % "test"
 
 //------------------------------------------------------------------------------
 
 // For "sbt console", used while developing for cluster mode
 unmanagedClasspath in Compile += { Attributed.blank(baseDirectory.value / "config_example") }
 
-// Enable the following line to test in cluster mode (with only one node)
+// Uncomment the following line to test in cluster mode (with only one node)
 //unmanagedClasspath in Test += { Attributed.blank(baseDirectory.value / "config_example") }
 
 //------------------------------------------------------------------------------
