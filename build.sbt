@@ -1,4 +1,4 @@
-organization := "cntt.cntt"
+organization := "tv.cntt"
 name         := "glokka"
 version      := "3.0.0-SNAPSHOT"
 
