@@ -1,6 +1,6 @@
 package glokka
 
-import scala.collection.mutable.{HashMap => MHashMap, MultiMap => MMultiMap, Set => MSet}
+import scala.collection.mutable.{HashMap => MHashMap, Set => MSet}
 import akka.actor.{Actor, ActorRef, Props, Terminated}
 
 private class LocalRegistry extends Actor {
@@ -10,7 +10,11 @@ private class LocalRegistry extends Actor {
   private val name2Ref = new MHashMap[String, ActorRef]
 
   // The reverse lookup table to quickly unregister dead actors
-  private val ref2Names = new MHashMap[ActorRef, MSet[String]] with MMultiMap[ActorRef, String]
+  private val ref2Names = MHashMap.empty[ActorRef, MSet[String]]
+
+  private def getOrCreateNameSet(ref: ActorRef): MSet[String] = {
+    ref2Names.getOrElseUpdate(ref, MSet.empty[String])
+  }
 
   //----------------------------------------------------------------------------
 
@@ -74,7 +78,7 @@ private class LocalRegistry extends Actor {
 
   private def registerActor(ref: ActorRef, name: String): Unit = {
     name2Ref(name) = ref
-    ref2Names.addBinding(ref, name)
+    getOrCreateNameSet(ref) += name
     context.watch(ref)
   }
 }

@@ -1,6 +1,7 @@
 package glokka
 
 import org.specs2.mutable._
+import org.specs2.matcher.Matchers
 import java.util.concurrent.TimeUnit
 
 import scala.concurrent.Await
@@ -13,7 +14,7 @@ class EchoActor extends Actor {
   override def receive: Receive = { case msg => sender() ! msg }
 }
 
-class OneNodeModeSpec extends Specification {
+class OneNodeModeSpec extends Specification with Matchers {
   import Registry._
 
   private val rand = new Random
@@ -36,7 +37,7 @@ class OneNodeModeSpec extends Specification {
       result must haveClass[Created]
 
       val ok = result.asInstanceOf[Created]
-      ok.name mustEqual name
+      ok.name must equalTo(name)
     }
 
     "Register by props: result Found" in {
@@ -50,7 +51,7 @@ class OneNodeModeSpec extends Specification {
       result must haveClass[Found]
 
       val ok = result.asInstanceOf[Found]
-      ok.name mustEqual name
+      ok.name must equalTo(name)
     }
 
     //--------------------------------------------------------------------------
@@ -64,8 +65,8 @@ class OneNodeModeSpec extends Specification {
       result must haveClass[Registered]
 
       val ok = result.asInstanceOf[Registered]
-      ok.name mustEqual name
-      ok.ref  mustEqual ref
+      ok.name must equalTo(name)
+      ok.ref  must equalTo(ref)
     }
 
     "Register by ref: result Registered (same ref)" in {
@@ -79,8 +80,8 @@ class OneNodeModeSpec extends Specification {
       result must haveClass[Registered]
 
       val ok = result.asInstanceOf[Registered]
-      ok.name mustEqual name
-      ok.ref  mustEqual ref
+      ok.name must equalTo(name)
+      ok.ref  must equalTo(ref)
     }
 
     "Register by ref: result Conflict (different ref)" in {
@@ -95,9 +96,9 @@ class OneNodeModeSpec extends Specification {
       result must haveClass[Conflict]
 
       val ok = result.asInstanceOf[Conflict]
-      ok.name      mustEqual name
-      ok.ref       mustEqual ref1
-      ok.failedRef mustEqual ref2
+      ok.name      must equalTo(name)
+      ok.ref       must equalTo(ref1)
+      ok.failedRef must equalTo(ref2)
     }
 
     //--------------------------------------------------------------------------
@@ -113,7 +114,7 @@ class OneNodeModeSpec extends Specification {
       result must haveClass[Found]
 
       val ok = result.asInstanceOf[Found]
-      ok.name mustEqual name
+      ok.name must equalTo(name)
     }
 
     "Lookup: result Found (Register by ref)" in {
@@ -127,8 +128,8 @@ class OneNodeModeSpec extends Specification {
       result must haveClass[Found]
 
       val ok = result.asInstanceOf[Found]
-      ok.name mustEqual name
-      ok.ref  mustEqual ref
+      ok.name must equalTo(name)
+      ok.ref  must equalTo(ref)
     }
 
     "Lookup: result NotFound" in {
@@ -139,7 +140,7 @@ class OneNodeModeSpec extends Specification {
       result must haveClass[NotFound]
 
       val ok = result.asInstanceOf[NotFound]
-      ok.name mustEqual name
+      ok.name must equalTo(name)
     }
 
     //--------------------------------------------------------------------------
@@ -153,7 +154,7 @@ class OneNodeModeSpec extends Specification {
       val result = Await.result(future, timeout.duration).asInstanceOf[AnyRef]
 
       result must haveClass[String]
-      result mustEqual "Hello"
+      result must equalTo("Hello")
     }
 
     "Tell with props" in {
@@ -163,7 +164,7 @@ class OneNodeModeSpec extends Specification {
       val result = Await.result(future, timeout.duration).asInstanceOf[AnyRef]
 
       result must haveClass[String]
-      result mustEqual "Hello"
+      result must equalTo("Hello")
     }
   }
 }

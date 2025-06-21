@@ -1,6 +1,6 @@
 package glokka
 
-import scala.collection.mutable.{ArrayBuffer, HashMap => MHashMap, MultiMap => MMultiMap, Set => MSet}
+import scala.collection.mutable.{ArrayBuffer, HashMap => MHashMap, Set => MSet}
 import scala.concurrent.duration.{FiniteDuration, SECONDS}
 import akka.actor.{Actor, ActorRef, PoisonPill, Terminated}
 
@@ -72,7 +72,11 @@ private class ClusterSingletonRegistry(clusterSingletonProxyRef: ActorRef) exten
   //
   // Remove Scala 2.12 support after some time:
   // https://github.com/scala/scala-collection-contrib/issues/66
-  private val ref2Names = new MHashMap[ActorRef, MSet[String]] with MMultiMap[ActorRef, String]
+  private val ref2Names = MHashMap.empty[ActorRef, MSet[String]]
+
+  private def getOrCreateNameSet(ref: ActorRef): MSet[String] = {
+    ref2Names.getOrElseUpdate(ref, MSet.empty[String])
+  }
 
   // Keys are actor names
   private val pendingCreateReqs = new MHashMap[String, PendingCreateValue]
@@ -168,7 +172,7 @@ private class ClusterSingletonRegistry(clusterSingletonProxyRef: ActorRef) exten
         // Wait for named actor to be created
         val delay = FiniteDuration(timeoutInSeconds, SECONDS)
         val msg   = TimeoutCreate(name, requester)
-        context.system.scheduler.scheduleOnce(delay, self, msg)(context.dispatcher)
+        context.system.scheduler.scheduleOnce(delay, self, msg)(using context.dispatcher)
 
         requester ! NotFound(name)
         pendingCreateReqs(name) = PendingCreateValue(requester, ArrayBuffer())
@@ -187,7 +191,7 @@ private class ClusterSingletonRegistry(clusterSingletonProxyRef: ActorRef) exten
         requester ! Registered(name, refToRegister)
         context.watch(refToRegister)
         name2Ref(name) = refToRegister
-        ref2Names.addBinding(refToRegister, name)
+        getOrCreateNameSet(refToRegister) += name
     }
   }
 }

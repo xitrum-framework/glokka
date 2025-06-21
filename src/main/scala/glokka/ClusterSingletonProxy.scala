@@ -20,16 +20,17 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor with Stash 
   import Registry._
   import ClusterSingletonProxy._
   import ClusterRegistry._
+  import scala.compiletime.uninitialized
 
-  private[this] val escapedProxyName = URLEncoder.encode(proxyName, "UTF-8")
+  private val escapedProxyName = URLEncoder.encode(proxyName, "UTF-8")
 
   // Sort by age, oldest first
-  private[this] val ageOrdering = Ordering.fromLessThan[Member] { (a, b) => a.isOlderThan(b) }
-  private[this] var membersByAge: SortedSet[Member] = SortedSet.empty(ageOrdering)
+  private val ageOrdering = Ordering.fromLessThan[Member] { (a, b) => a.isOlderThan(b) }
+  private var membersByAge: SortedSet[Member] = SortedSet.empty(using ageOrdering)
 
-  private[this] var clusterSingletonRegistryRef: ActorRef = _
+  private var clusterSingletonRegistryRef: ActorRef = uninitialized
 
-  private[this] var tellMsg: Option[Any] = None
+  private var tellMsg: Option[Any] = None
 
   //----------------------------------------------------------------------------
   // Subscribe to MemberEvent, re-subscribe when restart
@@ -64,7 +65,7 @@ private class ClusterSingletonProxy(proxyName: String) extends Actor with Stash 
 
   private def receiveClusterEvents: Actor.Receive = {
     case clusterState: ClusterEvent.CurrentClusterState =>
-      membersByAge = SortedSet.empty(ageOrdering) ++ clusterState.members
+      membersByAge = SortedSet.empty(using ageOrdering) ++ clusterState.members
       clusterSingletonRegistryOpt.foreach(_ ! Identify(None))
 
     case ClusterEvent.MemberUp(m) =>

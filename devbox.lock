@@ -1,0 +1,141 @@
+{
+  "lockfile_version": "1",
+  "packages": {
+    "github:NixOS/nixpkgs/nixpkgs-unstable": {
+      "last_modified": "2025-06-18T03:01:18Z",
+      "resolved": "github:NixOS/nixpkgs/5395fb3ab3f97b9b7abca147249fa2e8ed27b192?lastModified=1750215678&narHash=sha256-Rc%2FytpamXRf6z8UA2SGa4aaWxUXRbX2MAWIu2C8M%2Bok%3D"
+    },
+    "gnupg@2.4.7": {
+      "last_modified": "2025-05-16T20:19:48Z",
+      "resolved": "github:NixOS/nixpkgs/12a55407652e04dcf2309436eb06fef0d3713ef3#gnupg",
+      "source": "devbox-search",
+      "version": "2.4.7",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/ixxj0797zh8hylvsjrk6mbsm1pb55y6c-gnupg-2.4.7",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/ixxj0797zh8hylvsjrk6mbsm1pb55y6c-gnupg-2.4.7"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/7sabm0ks2csrhcfrgabmhxlxpxsbyhm2-gnupg-2.4.7",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/7sabm0ks2csrhcfrgabmhxlxpxsbyhm2-gnupg-2.4.7"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/viw9i2i7lvh9lvr903la1x1s52rxa30i-gnupg-2.4.7",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/viw9i2i7lvh9lvr903la1x1s52rxa30i-gnupg-2.4.7"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/zf12chbmsxmkidrgafqwf8pw4ldlpdch-gnupg-2.4.7",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/zf12chbmsxmkidrgafqwf8pw4ldlpdch-gnupg-2.4.7"
+        }
+      }
+    },
+    "jdk@21": {
+      "last_modified": "2025-05-16T20:19:48Z",
+      "resolved": "github:NixOS/nixpkgs/12a55407652e04dcf2309436eb06fef0d3713ef3#jdk",
+      "source": "devbox-search",
+      "version": "21.0.7+6",
+      "systems": {
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/21ns0zdnvihkg77hjidyb0b748dqyh0d-openjdk-21.0.7+6",
+              "default": true
+            },
+            {
+              "name": "debug",
+              "path": "/nix/store/nh6k0hczb384iac0sc24m5a41ywkwkv4-openjdk-21.0.7+6-debug"
+            }
+          ],
+          "store_path": "/nix/store/21ns0zdnvihkg77hjidyb0b748dqyh0d-openjdk-21.0.7+6"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/qagnl38l96xcbx17ll0v9zswhcl1nqw6-openjdk-21.0.7+6",
+              "default": true
+            },
+            {
+              "name": "debug",
+              "path": "/nix/store/qkprsqd8fb5q3h7jfr9gyj1q34ypvdji-openjdk-21.0.7+6-debug"
+            }
+          ],
+          "store_path": "/nix/store/qagnl38l96xcbx17ll0v9zswhcl1nqw6-openjdk-21.0.7+6"
+        }
+      }
+    },
+    "sbt@1.11.2": {
+      "last_modified": "2025-06-17T01:11:27Z",
+      "resolved": "github:NixOS/nixpkgs/c539ae8d21e49776966d714f82fba33b1fca78bc#sbt",
+      "source": "devbox-search",
+      "version": "1.11.2",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/pffkv4lcnbc2d0jcccwnx7jls13zh0cf-sbt-1.11.2",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/pffkv4lcnbc2d0jcccwnx7jls13zh0cf-sbt-1.11.2"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/9nc96pwlffpk9n1fyakjfpldnpcryf3f-sbt-1.11.2",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/9nc96pwlffpk9n1fyakjfpldnpcryf3f-sbt-1.11.2"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/nxmqhpjrms6imqxsnm9d5ih1hnxynd4d-sbt-1.11.2",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/nxmqhpjrms6imqxsnm9d5ih1hnxynd4d-sbt-1.11.2"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/72r7rzp1sqwgh99yxfrdrly8sxds7iy1-sbt-1.11.2",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/72r7rzp1sqwgh99yxfrdrly8sxds7iy1-sbt-1.11.2"
+        }
+      }
+    }
+  }
+}
